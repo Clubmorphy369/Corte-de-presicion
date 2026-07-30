@@ -11,7 +11,7 @@
             background: #f0f2f5;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             padding: 10px;
-            touch-action: pan-y; /* Permite scroll vertical pero evita conflictos */
+            touch-action: pan-y;
         }
         .container {
             max-width: 1400px;
@@ -61,14 +61,14 @@
             overflow: auto;
             max-height: 70vh;
             width: 100%;
-            touch-action: pan-x pan-y; /* permite scroll dentro del contenedor */
+            touch-action: pan-x pan-y;
         }
         #imageToCrop {
             display: block;
             margin: 0 auto;
             max-width: 100%;
             height: auto;
-            touch-action: none; /* evita que el navegador capte el toque para zoom */
+            touch-action: none;
         }
         .crop-box {
             position: absolute;
@@ -108,10 +108,7 @@
             flex: 1 0 45%;
             min-width: 70px;
         }
-        .precision-input label {
-            font-size: 0.75rem;
-            font-weight: bold;
-        }
+        .precision-input label { font-size: 0.75rem; font-weight: bold; }
         .precision-input input {
             width: 100%;
             padding: 8px 6px;
@@ -299,7 +296,7 @@
 
 <script>
 // ============================================================
-//  ChessExtract Pro - Versión con soporte táctil completo
+//  ChessExtract Pro - Versión con escalas separadas (corregida)
 // ============================================================
 
 // DOM elements
@@ -374,21 +371,18 @@ function syncUIFromOrig() {
 }
 
 // --------------------------------------------------------------
-//  ACTUALIZAR CAJA VISUAL (escala)
+//  ACTUALIZAR CAJA VISUAL (escalas separadas)
 // --------------------------------------------------------------
 function updateVisualCropBox() {
     if (!cropBox || !originalWidth || !originalHeight) return;
     const imgRect = imageToCrop.getBoundingClientRect();
-    // Escala visual = ancho mostrado / ancho real original
     const scaleX = imgRect.width / originalWidth;
     const scaleY = imgRect.height / originalHeight;
-    // Usamos la misma escala en ambos ejes (mantener proporción)
-    const scale = Math.min(scaleX, scaleY); // o podríamos usar scaleX
-    // A veces el contenedor puede tener padding, mejor usar el tamaño del elemento img
-    const left = cropOrigX * scale;
-    const top = cropOrigY * scale;
-    const w = cropOrigW * scale;
-    const h = cropOrigH * scale;
+    // Posicionar usando escalas independientes
+    const left = cropOrigX * scaleX;
+    const top = cropOrigY * scaleY;
+    const w = cropOrigW * scaleX;
+    const h = cropOrigH * scaleY;
     cropBox.style.left = left + 'px';
     cropBox.style.top = top + 'px';
     cropBox.style.width = w + 'px';
@@ -609,10 +603,8 @@ function clearAll() {
 }
 
 // --------------------------------------------------------------
-//  EVENTOS DE ARRASTRE Y REDIMENSIÓN (ratón + táctil)
+//  EVENTOS DE ARRASTRE Y REDIMENSIÓN (ratón + táctil) con escalas separadas
 // --------------------------------------------------------------
-
-// Obtener coordenadas del evento (ratón o táctil)
 function getPointerPos(e) {
     if (e.touches) {
         return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
@@ -620,22 +612,19 @@ function getPointerPos(e) {
     return { clientX: e.clientX, clientY: e.clientY };
 }
 
-// Función de movimiento compartida
 function processDrag(clientX, clientY) {
     if (!isDragging && !isResizing) return;
     const imgRect = imageToCrop.getBoundingClientRect();
-    // Escala visual = ancho mostrado / ancho original
+    // Escalas separadas
     const scaleX = imgRect.width / originalWidth;
     const scaleY = imgRect.height / originalHeight;
-    // Usamos escala uniforme (mantener proporción)
-    const scale = Math.min(scaleX, scaleY);
-    // Si la imagen no está escalada uniformemente, usar ambos ejes por separado
-    const dx = (clientX - startX) / scale;
-    const dy = (clientY - startY) / scale;
+    const dx = (clientX - startX) / scaleX;
+    const dy = (clientY - startY) / scaleY;
 
     if (isDragging) {
         let newX = cropOrigX + dx;
         let newY = cropOrigY + dy;
+        // Limitar dentro de la imagen
         if (newX >= 0 && newX + cropOrigW <= originalWidth) cropOrigX = newX;
         if (newY >= 0 && newY + cropOrigH <= originalHeight) cropOrigY = newY;
         cropOrigX = Math.round(cropOrigX);
@@ -731,7 +720,6 @@ function stopDragTouch(e) {
 // --------------------------------------------------------------
 function attachDragEvents() {
     if (!cropBox) return;
-    // Quitar eventos previos para evitar duplicados
     cropBox.removeEventListener('mousedown', startDragMouse);
     cropBox.removeEventListener('touchstart', startDragTouch);
     document.removeEventListener('mousemove', onMouseMove);
@@ -739,7 +727,6 @@ function attachDragEvents() {
     document.removeEventListener('mouseup', stopDragMouse);
     document.removeEventListener('touchend', stopDragTouch);
 
-    // Tiradores
     const handles = cropBox.querySelectorAll('.resize-handle');
     handles.forEach(h => {
         h.removeEventListener('mousedown', startResizeMouse);
@@ -748,11 +735,9 @@ function attachDragEvents() {
         h.addEventListener('touchstart', startResizeTouch, { passive: false });
     });
 
-    // Arrastre sobre el recuadro
     cropBox.addEventListener('mousedown', startDragMouse);
     cropBox.addEventListener('touchstart', startDragTouch, { passive: false });
 
-    // Movimiento global (document)
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('touchmove', onTouchMove, { passive: false });
     document.addEventListener('mouseup', stopDragMouse);
@@ -873,7 +858,6 @@ function loadCurrentImage() {
             originalWidth = originalImage.width;
             originalHeight = originalImage.height;
             imageToCrop.src = e.target.result;
-            // Recorte inicial: 60% del centro
             if (cropOrigW === 200 && cropOrigH === 200 && originalWidth) {
                 cropOrigW = Math.floor(originalWidth * 0.6);
                 cropOrigH = Math.floor(originalHeight * 0.6);
@@ -884,7 +868,6 @@ function loadCurrentImage() {
             cropOneBtn.disabled = false;
             if (cropBox) cropBox.classList.remove('hidden');
             attachDragEvents();
-            // Reset zoom
             if (currentZoom100) zoom100();
         };
         originalImage.src = e.target.result;
