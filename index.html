@@ -62,6 +62,7 @@
             max-height: 70vh;
             width: 100%;
             touch-action: pan-x pan-y;
+            -webkit-overflow-scrolling: touch;
         }
         #imageToCrop {
             display: block;
@@ -296,7 +297,7 @@
 
 <script>
 // ============================================================
-//  ChessExtract Pro - Versión con escalas separadas (corregida)
+//  ChessExtract Pro - Versión con scroll móvil corregido
 // ============================================================
 
 // DOM elements
@@ -371,14 +372,13 @@ function syncUIFromOrig() {
 }
 
 // --------------------------------------------------------------
-//  ACTUALIZAR CAJA VISUAL (escalas separadas)
+//  ACTUALIZAR CAJA VISUAL (con escalas separadas y redondeo)
 // --------------------------------------------------------------
 function updateVisualCropBox() {
     if (!cropBox || !originalWidth || !originalHeight) return;
     const imgRect = imageToCrop.getBoundingClientRect();
     const scaleX = imgRect.width / originalWidth;
     const scaleY = imgRect.height / originalHeight;
-    // Posicionar usando escalas independientes
     const left = cropOrigX * scaleX;
     const top = cropOrigY * scaleY;
     const w = cropOrigW * scaleX;
@@ -416,7 +416,7 @@ function applyNumericCrop() {
 }
 
 // --------------------------------------------------------------
-//  RECORTAR IMAGEN (coordenadas exactas en original)
+//  RECORTAR IMAGEN
 // --------------------------------------------------------------
 function cropImagePrecise() {
     if (!originalImage || originalWidth === 0) return null;
@@ -438,7 +438,7 @@ function cropImagePrecise() {
 }
 
 // --------------------------------------------------------------
-//  GALERÍA
+//  GALERÍA (sin cambios)
 // --------------------------------------------------------------
 function addBoard(rawDataUrl, turno = null) {
     boards.push({ rawDataUrl, turno });
@@ -603,7 +603,7 @@ function clearAll() {
 }
 
 // --------------------------------------------------------------
-//  EVENTOS DE ARRASTRE Y REDIMENSIÓN (ratón + táctil) con escalas separadas
+//  EVENTOS DE ARRASTRE Y REDIMENSIÓN (con scroll móvil corregido)
 // --------------------------------------------------------------
 function getPointerPos(e) {
     if (e.touches) {
@@ -615,7 +615,6 @@ function getPointerPos(e) {
 function processDrag(clientX, clientY) {
     if (!isDragging && !isResizing) return;
     const imgRect = imageToCrop.getBoundingClientRect();
-    // Escalas separadas
     const scaleX = imgRect.width / originalWidth;
     const scaleY = imgRect.height / originalHeight;
     const dx = (clientX - startX) / scaleX;
@@ -624,11 +623,15 @@ function processDrag(clientX, clientY) {
     if (isDragging) {
         let newX = cropOrigX + dx;
         let newY = cropOrigY + dy;
-        // Limitar dentro de la imagen
-        if (newX >= 0 && newX + cropOrigW <= originalWidth) cropOrigX = newX;
-        if (newY >= 0 && newY + cropOrigH <= originalHeight) cropOrigY = newY;
-        cropOrigX = Math.round(cropOrigX);
-        cropOrigY = Math.round(cropOrigY);
+        // Redondear y limitar con margen de 0.5 px para evitar errores
+        const maxX = originalWidth - cropOrigW;
+        const maxY = originalHeight - cropOrigH;
+        if (newX < 0) newX = 0;
+        if (newX > maxX) newX = maxX;
+        if (newY < 0) newY = 0;
+        if (newY > maxY) newY = maxY;
+        cropOrigX = Math.round(newX);
+        cropOrigY = Math.round(newY);
     } else if (isResizing) {
         let deltaW = 0, deltaH = 0, deltaX = 0, deltaY = 0;
         if (resizeDir.includes('e')) deltaW = dx;
@@ -639,14 +642,16 @@ function processDrag(clientX, clientY) {
         let newH = cropOrigH + deltaH;
         let newX = cropOrigX + deltaX;
         let newY = cropOrigY + deltaY;
-        if (newW >= 10 && newX >= 0 && newX + newW <= originalWidth) {
-            cropOrigW = Math.round(newW);
-            cropOrigX = Math.round(newX);
-        }
-        if (newH >= 10 && newY >= 0 && newY + newH <= originalHeight) {
-            cropOrigH = Math.round(newH);
-            cropOrigY = Math.round(newY);
-        }
+        if (newW < 10) newW = 10;
+        if (newH < 10) newH = 10;
+        if (newX < 0) newX = 0;
+        if (newY < 0) newY = 0;
+        if (newX + newW > originalWidth) newW = originalWidth - newX;
+        if (newY + newH > originalHeight) newH = originalHeight - newY;
+        cropOrigW = Math.round(newW);
+        cropOrigH = Math.round(newH);
+        cropOrigX = Math.round(newX);
+        cropOrigY = Math.round(newY);
     }
     syncUIFromOrig();
     startX = clientX;
@@ -684,10 +689,10 @@ function stopDragMouse(e) {
     isResizing = false;
 }
 
-// --- Eventos táctiles ---
+// --- Eventos táctiles (con prevención condicional) ---
 function startDragTouch(e) {
     if (e.target.classList.contains('resize-handle')) return;
-    e.preventDefault();
+    e.preventDefault(); // Prevenir scroll al tocar el recuadro
     const pos = getPointerPos(e);
     isDragging = true;
     startX = pos.clientX;
@@ -705,9 +710,13 @@ function startResizeTouch(e) {
 }
 
 function onTouchMove(e) {
-    e.preventDefault();
-    const pos = getPointerPos(e);
-    processDrag(pos.clientX, pos.clientY);
+    // Solo prevenir si estamos arrastrando o redimensionando
+    if (isDragging || isResizing) {
+        e.preventDefault();
+        const pos = getPointerPos(e);
+        processDrag(pos.clientX, pos.clientY);
+    }
+    // Si no estamos arrastrando, permitir scroll (no hacemos preventDefault)
 }
 
 function stopDragTouch(e) {
@@ -720,6 +729,7 @@ function stopDragTouch(e) {
 // --------------------------------------------------------------
 function attachDragEvents() {
     if (!cropBox) return;
+    // Quitar eventos anteriores
     cropBox.removeEventListener('mousedown', startDragMouse);
     cropBox.removeEventListener('touchstart', startDragTouch);
     document.removeEventListener('mousemove', onMouseMove);
