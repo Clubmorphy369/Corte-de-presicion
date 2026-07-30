@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChessExtract Pro - Corte de Precisión (Móvil)</title>
+    <title>ChessExtract Pro - Corte de Precisión</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,6 +78,7 @@
             cursor: move;
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
             touch-action: none;
+            pointer-events: auto;
         }
         .resize-handle {
             position: absolute;
@@ -297,7 +298,7 @@
 
 <script>
 // ============================================================
-//  ChessExtract Pro - Límites corregidos y redondeo preciso
+//  ChessExtract Pro - Límites con tolerancia y precisión
 // ============================================================
 
 // DOM elements
@@ -358,44 +359,60 @@ function showNotification(msg, isError = false) {
 }
 
 // --------------------------------------------------------------
-//  SINCRONIZAR UI Y VALIDAR LÍMITES
+//  SINCRONIZAR UI Y VALIDAR LÍMITES (con tolerancia)
 // --------------------------------------------------------------
 function clampCropValues() {
     if (!originalWidth || !originalHeight) return;
-    // Asegurar que el recuadro no se salga de la imagen
+    // Usamos un margen de 0.5 para evitar errores de redondeo
+    const eps = 0.5;
+    if (cropOrigX + cropOrigW > originalWidth + eps) {
+        cropOrigW = originalWidth - cropOrigX;
+    }
+    if (cropOrigY + cropOrigH > originalHeight + eps) {
+        cropOrigH = originalHeight - cropOrigY;
+    }
+    if (cropOrigX < -eps) cropOrigX = 0;
+    if (cropOrigY < -eps) cropOrigY = 0;
+    if (cropOrigW < 10) cropOrigW = 10;
+    if (cropOrigH < 10) cropOrigH = 10;
+    // Redondear al final para evitar desfases
+    cropOrigX = Math.round(cropOrigX);
+    cropOrigY = Math.round(cropOrigY);
+    cropOrigW = Math.round(cropOrigW);
+    cropOrigH = Math.round(cropOrigH);
+    // Re-validar después del redondeo
     if (cropOrigX + cropOrigW > originalWidth) cropOrigW = originalWidth - cropOrigX;
     if (cropOrigY + cropOrigH > originalHeight) cropOrigH = originalHeight - cropOrigY;
     if (cropOrigX < 0) cropOrigX = 0;
     if (cropOrigY < 0) cropOrigY = 0;
-    if (cropOrigW < 10) cropOrigW = 10;
-    if (cropOrigH < 10) cropOrigH = 10;
 }
 
 function syncUIFromOrig() {
     clampCropValues();
-    cropXInput.value = Math.round(cropOrigX);
-    cropYInput.value = Math.round(cropOrigY);
-    cropWInput.value = Math.round(cropOrigW);
-    cropHInput.value = Math.round(cropOrigH);
+    cropXInput.value = cropOrigX;
+    cropYInput.value = cropOrigY;
+    cropWInput.value = cropOrigW;
+    cropHInput.value = cropOrigH;
     if (originalWidth && originalHeight) {
-        originalSizeInfo.innerText = `Original: ${originalWidth}×${originalHeight} px | Recorte: ${Math.round(cropOrigW)}×${Math.round(cropOrigH)}`;
+        originalSizeInfo.innerText = `Original: ${originalWidth}×${originalHeight} px | Recorte: ${cropOrigW}×${cropOrigH}`;
     }
     updateVisualCropBox();
 }
 
 // --------------------------------------------------------------
-//  ACTUALIZAR CAJA VISUAL (con redondeo)
+//  ACTUALIZAR CAJA VISUAL (usando dimensiones mostradas)
 // --------------------------------------------------------------
 function updateVisualCropBox() {
     if (!cropBox || !originalWidth || !originalHeight) return;
-    const imgRect = imageToCrop.getBoundingClientRect();
-    const scaleX = imgRect.width / originalWidth;
-    const scaleY = imgRect.height / originalHeight;
+    // Usamos el tamaño mostrado de la imagen (no getBoundingClientRect, que puede variar)
+    const displayWidth = imageToCrop.clientWidth || imageToCrop.width;
+    const displayHeight = imageToCrop.clientHeight || imageToCrop.height;
+    const scaleX = displayWidth / originalWidth;
+    const scaleY = displayHeight / originalHeight;
     const left = cropOrigX * scaleX;
     const top = cropOrigY * scaleY;
     const w = cropOrigW * scaleX;
     const h = cropOrigH * scaleY;
-    // Redondear a 1 decimal para evitar subpíxeles
     cropBox.style.left = left + 'px';
     cropBox.style.top = top + 'px';
     cropBox.style.width = w + 'px';
@@ -610,7 +627,7 @@ function clearAll() {
 }
 
 // --------------------------------------------------------------
-//  ARRASTRE Y REDIMENSIÓN (con límites corregidos)
+//  ARRASTRE Y REDIMENSIÓN (con límites con tolerancia)
 // --------------------------------------------------------------
 function getPointerPos(e) {
     if (e.touches) {
@@ -621,22 +638,25 @@ function getPointerPos(e) {
 
 function processDrag(clientX, clientY) {
     if (!isDragging && !isResizing) return;
-    const imgRect = imageToCrop.getBoundingClientRect();
-    const scaleX = imgRect.width / originalWidth;
-    const scaleY = imgRect.height / originalHeight;
+    const displayWidth = imageToCrop.clientWidth || imageToCrop.width;
+    const displayHeight = imageToCrop.clientHeight || imageToCrop.height;
+    const scaleX = displayWidth / originalWidth;
+    const scaleY = displayHeight / originalHeight;
     const dx = (clientX - startX) / scaleX;
     const dy = (clientY - startY) / scaleY;
 
     if (isDragging) {
         let newX = cropOrigX + dx;
         let newY = cropOrigY + dy;
-        // Limitar con redondeo preciso
         const maxX = originalWidth - cropOrigW;
         const maxY = originalHeight - cropOrigH;
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
-        cropOrigX = Math.round(newX);
-        cropOrigY = Math.round(newY);
+        // Permitir una pequeña tolerancia
+        if (newX < 0) newX = 0;
+        if (newX > maxX) newX = maxX;
+        if (newY < 0) newY = 0;
+        if (newY > maxY) newY = maxY;
+        cropOrigX = newX;
+        cropOrigY = newY;
     } else if (isResizing) {
         let deltaW = 0, deltaH = 0, deltaX = 0, deltaY = 0;
         if (resizeDir.includes('e')) deltaW = dx;
@@ -649,16 +669,14 @@ function processDrag(clientX, clientY) {
         let newY = cropOrigY + deltaY;
         newW = Math.max(10, newW);
         newH = Math.max(10, newH);
-        // Limitar al tamaño de la imagen
         if (newX < 0) newX = 0;
         if (newY < 0) newY = 0;
         if (newX + newW > originalWidth) newW = originalWidth - newX;
         if (newY + newH > originalHeight) newH = originalHeight - newY;
-        // Redondear
-        cropOrigX = Math.round(newX);
-        cropOrigY = Math.round(newY);
-        cropOrigW = Math.round(newW);
-        cropOrigH = Math.round(newH);
+        cropOrigX = newX;
+        cropOrigY = newY;
+        cropOrigW = newW;
+        cropOrigH = newH;
     }
     syncUIFromOrig();
     startX = clientX;
@@ -783,10 +801,6 @@ function applyTemplate() {
     cropOrigY = cropTemplate.y * originalHeight;
     cropOrigW = cropTemplate.w * originalWidth;
     cropOrigH = cropTemplate.h * originalHeight;
-    cropOrigX = Math.round(cropOrigX);
-    cropOrigY = Math.round(cropOrigY);
-    cropOrigW = Math.max(10, Math.round(cropOrigW));
-    cropOrigH = Math.max(10, Math.round(cropOrigH));
     syncUIFromOrig();
     showNotification('Plantilla aplicada a esta imagen');
 }
@@ -839,10 +853,6 @@ function processAll() {
                         cropOrigY = cropTemplate.y * originalHeight;
                         cropOrigW = cropTemplate.w * originalWidth;
                         cropOrigH = cropTemplate.h * originalHeight;
-                        cropOrigX = Math.round(cropOrigX);
-                        cropOrigY = Math.round(cropOrigY);
-                        cropOrigW = Math.max(10, Math.round(cropOrigW));
-                        cropOrigH = Math.max(10, Math.round(cropOrigH));
                         syncUIFromOrig();
                     }
                     const raw = cropImagePrecise();
