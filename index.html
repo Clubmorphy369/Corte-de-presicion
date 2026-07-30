@@ -297,7 +297,7 @@
 
 <script>
 // ============================================================
-//  ChessExtract Pro - Versión con scroll móvil corregido
+//  ChessExtract Pro - Límites corregidos y redondeo preciso
 // ============================================================
 
 // DOM elements
@@ -358,9 +358,21 @@ function showNotification(msg, isError = false) {
 }
 
 // --------------------------------------------------------------
-//  SINCRONIZAR UI CON COORDENADAS ORIGINALES
+//  SINCRONIZAR UI Y VALIDAR LÍMITES
 // --------------------------------------------------------------
+function clampCropValues() {
+    if (!originalWidth || !originalHeight) return;
+    // Asegurar que el recuadro no se salga de la imagen
+    if (cropOrigX + cropOrigW > originalWidth) cropOrigW = originalWidth - cropOrigX;
+    if (cropOrigY + cropOrigH > originalHeight) cropOrigH = originalHeight - cropOrigY;
+    if (cropOrigX < 0) cropOrigX = 0;
+    if (cropOrigY < 0) cropOrigY = 0;
+    if (cropOrigW < 10) cropOrigW = 10;
+    if (cropOrigH < 10) cropOrigH = 10;
+}
+
 function syncUIFromOrig() {
+    clampCropValues();
     cropXInput.value = Math.round(cropOrigX);
     cropYInput.value = Math.round(cropOrigY);
     cropWInput.value = Math.round(cropOrigW);
@@ -372,7 +384,7 @@ function syncUIFromOrig() {
 }
 
 // --------------------------------------------------------------
-//  ACTUALIZAR CAJA VISUAL (con escalas separadas y redondeo)
+//  ACTUALIZAR CAJA VISUAL (con redondeo)
 // --------------------------------------------------------------
 function updateVisualCropBox() {
     if (!cropBox || !originalWidth || !originalHeight) return;
@@ -383,6 +395,7 @@ function updateVisualCropBox() {
     const top = cropOrigY * scaleY;
     const w = cropOrigW * scaleX;
     const h = cropOrigH * scaleY;
+    // Redondear a 1 decimal para evitar subpíxeles
     cropBox.style.left = left + 'px';
     cropBox.style.top = top + 'px';
     cropBox.style.width = w + 'px';
@@ -401,12 +414,6 @@ function applyNumericCrop() {
     if (isNaN(y)) y = 0;
     if (isNaN(w) || w <= 0) w = 100;
     if (isNaN(h) || h <= 0) h = 100;
-    if (x + w > originalWidth) w = originalWidth - x;
-    if (y + h > originalHeight) h = originalHeight - y;
-    if (x < 0) x = 0;
-    if (y < 0) y = 0;
-    if (w <= 0) w = 10;
-    if (h <= 0) h = 10;
     cropOrigX = x;
     cropOrigY = y;
     cropOrigW = w;
@@ -438,7 +445,7 @@ function cropImagePrecise() {
 }
 
 // --------------------------------------------------------------
-//  GALERÍA (sin cambios)
+//  GALERÍA
 // --------------------------------------------------------------
 function addBoard(rawDataUrl, turno = null) {
     boards.push({ rawDataUrl, turno });
@@ -603,7 +610,7 @@ function clearAll() {
 }
 
 // --------------------------------------------------------------
-//  EVENTOS DE ARRASTRE Y REDIMENSIÓN (con scroll móvil corregido)
+//  ARRASTRE Y REDIMENSIÓN (con límites corregidos)
 // --------------------------------------------------------------
 function getPointerPos(e) {
     if (e.touches) {
@@ -623,13 +630,11 @@ function processDrag(clientX, clientY) {
     if (isDragging) {
         let newX = cropOrigX + dx;
         let newY = cropOrigY + dy;
-        // Redondear y limitar con margen de 0.5 px para evitar errores
+        // Limitar con redondeo preciso
         const maxX = originalWidth - cropOrigW;
         const maxY = originalHeight - cropOrigH;
-        if (newX < 0) newX = 0;
-        if (newX > maxX) newX = maxX;
-        if (newY < 0) newY = 0;
-        if (newY > maxY) newY = maxY;
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
         cropOrigX = Math.round(newX);
         cropOrigY = Math.round(newY);
     } else if (isResizing) {
@@ -642,16 +647,18 @@ function processDrag(clientX, clientY) {
         let newH = cropOrigH + deltaH;
         let newX = cropOrigX + deltaX;
         let newY = cropOrigY + deltaY;
-        if (newW < 10) newW = 10;
-        if (newH < 10) newH = 10;
+        newW = Math.max(10, newW);
+        newH = Math.max(10, newH);
+        // Limitar al tamaño de la imagen
         if (newX < 0) newX = 0;
         if (newY < 0) newY = 0;
         if (newX + newW > originalWidth) newW = originalWidth - newX;
         if (newY + newH > originalHeight) newH = originalHeight - newY;
-        cropOrigW = Math.round(newW);
-        cropOrigH = Math.round(newH);
+        // Redondear
         cropOrigX = Math.round(newX);
         cropOrigY = Math.round(newY);
+        cropOrigW = Math.round(newW);
+        cropOrigH = Math.round(newH);
     }
     syncUIFromOrig();
     startX = clientX;
@@ -689,10 +696,10 @@ function stopDragMouse(e) {
     isResizing = false;
 }
 
-// --- Eventos táctiles (con prevención condicional) ---
+// --- Eventos táctiles ---
 function startDragTouch(e) {
     if (e.target.classList.contains('resize-handle')) return;
-    e.preventDefault(); // Prevenir scroll al tocar el recuadro
+    e.preventDefault();
     const pos = getPointerPos(e);
     isDragging = true;
     startX = pos.clientX;
@@ -710,13 +717,11 @@ function startResizeTouch(e) {
 }
 
 function onTouchMove(e) {
-    // Solo prevenir si estamos arrastrando o redimensionando
     if (isDragging || isResizing) {
         e.preventDefault();
         const pos = getPointerPos(e);
         processDrag(pos.clientX, pos.clientY);
     }
-    // Si no estamos arrastrando, permitir scroll (no hacemos preventDefault)
 }
 
 function stopDragTouch(e) {
@@ -725,11 +730,10 @@ function stopDragTouch(e) {
 }
 
 // --------------------------------------------------------------
-//  INICIALIZAR EVENTOS EN LA CAJA DE RECORTE
+//  INICIALIZAR EVENTOS
 // --------------------------------------------------------------
 function attachDragEvents() {
     if (!cropBox) return;
-    // Quitar eventos anteriores
     cropBox.removeEventListener('mousedown', startDragMouse);
     cropBox.removeEventListener('touchstart', startDragTouch);
     document.removeEventListener('mousemove', onMouseMove);
@@ -783,8 +787,6 @@ function applyTemplate() {
     cropOrigY = Math.round(cropOrigY);
     cropOrigW = Math.max(10, Math.round(cropOrigW));
     cropOrigH = Math.max(10, Math.round(cropOrigH));
-    if (cropOrigX + cropOrigW > originalWidth) cropOrigW = originalWidth - cropOrigX;
-    if (cropOrigY + cropOrigH > originalHeight) cropOrigH = originalHeight - cropOrigY;
     syncUIFromOrig();
     showNotification('Plantilla aplicada a esta imagen');
 }
@@ -810,7 +812,7 @@ function cropAndSaveOne() {
 }
 
 // --------------------------------------------------------------
-//  PROCESAR TODAS LAS IMÁGENES
+//  PROCESAR TODAS
 // --------------------------------------------------------------
 function processAll() {
     if (!imageFiles.length) { showNotification('No hay imágenes', true); return; }
@@ -857,7 +859,7 @@ function processAll() {
 }
 
 // --------------------------------------------------------------
-//  NAVEGACIÓN DE IMÁGENES
+//  NAVEGACIÓN
 // --------------------------------------------------------------
 function loadCurrentImage() {
     if (!imageFiles.length) return;
