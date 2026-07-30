@@ -2,29 +2,30 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>ChessExtract Pro - Corte de Precisión</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ChessExtract Pro - Corte de Precisión (Móvil)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             background: #f0f2f5;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            padding: 20px;
+            padding: 10px;
+            touch-action: pan-y; /* Permite scroll vertical pero evita conflictos */
         }
         .container {
             max-width: 1400px;
             margin: 0 auto;
             background: white;
-            padding: 20px;
+            padding: 15px;
             border-radius: 12px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
         }
-        h1 { font-size: 1.8rem; text-align: center; margin-bottom: 10px; }
+        h1 { font-size: 1.6rem; text-align: center; margin-bottom: 8px; }
         .card {
             background: #f8f9fa;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 12px;
+            margin-bottom: 15px;
             border-radius: 8px;
             border-left: 4px solid #3498db;
         }
@@ -32,21 +33,26 @@
             background: #3498db;
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 6px;
+            padding: 12px 18px;
+            border-radius: 8px;
             cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            font-size: 0.9rem;
-            margin: 5px;
+            font-size: 1rem;
+            margin: 4px;
+            touch-action: manipulation;
+            min-height: 48px;
+            min-width: 48px;
+            justify-content: center;
         }
         .btn-success { background: #2ecc71; }
         .btn-danger { background: #e74c3c; }
         .btn-warning { background: #f39c12; }
         .btn-dark { background: #2c3e50; }
         .btn:hover { opacity: 0.9; transform: translateY(-1px); }
-        input[type="file"] { width: 100%; padding: 10px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 6px; }
+        .btn:active { transform: scale(0.97); }
+        input[type="file"] { width: 100%; padding: 12px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 8px; }
         #cropContainer {
             position: relative;
             text-align: center;
@@ -54,14 +60,15 @@
             border-radius: 8px;
             overflow: auto;
             max-height: 70vh;
-            display: inline-block;
             width: 100%;
+            touch-action: pan-x pan-y; /* permite scroll dentro del contenedor */
         }
         #imageToCrop {
             display: block;
             margin: 0 auto;
             max-width: 100%;
             height: auto;
+            touch-action: none; /* evita que el navegador capte el toque para zoom */
         }
         .crop-box {
             position: absolute;
@@ -69,19 +76,21 @@
             background: rgba(52,152,219,0.2);
             cursor: move;
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
+            touch-action: none;
         }
         .resize-handle {
             position: absolute;
-            width: 12px;
-            height: 12px;
+            width: 20px;
+            height: 20px;
             background: #f1c40f;
             border-radius: 50%;
-            border: 1px solid white;
+            border: 2px solid white;
+            touch-action: none;
         }
-        .resize-nw { top: -5px; left: -5px; cursor: nw-resize; }
-        .resize-ne { top: -5px; right: -5px; cursor: ne-resize; }
-        .resize-sw { bottom: -5px; left: -5px; cursor: sw-resize; }
-        .resize-se { bottom: -5px; right: -5px; cursor: se-resize; }
+        .resize-nw { top: -10px; left: -10px; cursor: nw-resize; }
+        .resize-ne { top: -10px; right: -10px; cursor: ne-resize; }
+        .resize-sw { bottom: -10px; left: -10px; cursor: sw-resize; }
+        .resize-se { bottom: -10px; right: -10px; cursor: se-resize; }
         .precision-panel {
             background: #e9ecef;
             padding: 12px;
@@ -89,39 +98,46 @@
             margin: 15px 0;
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 10px;
             align-items: flex-end;
         }
         .precision-input {
             display: flex;
             flex-direction: column;
             gap: 4px;
+            flex: 1 0 45%;
+            min-width: 70px;
         }
         .precision-input label {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             font-weight: bold;
         }
         .precision-input input {
-            width: 90px;
-            padding: 6px;
+            width: 100%;
+            padding: 8px 6px;
             border-radius: 4px;
             border: 1px solid #ccc;
             font-family: monospace;
+            font-size: 1rem;
+            background: white;
         }
         .coord-info {
             font-family: monospace;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             background: #2c3e50;
             color: white;
             padding: 6px 12px;
             border-radius: 6px;
+            flex: 1 0 100%;
+            text-align: center;
         }
-        .nav-buttons { display: flex; justify-content: space-between; margin-top: 15px; gap: 10px; }
+        .nav-buttons { display: flex; justify-content: space-between; margin-top: 15px; gap: 8px; flex-wrap: wrap; }
+        .nav-buttons .btn { flex: 1; min-width: 80px; }
         .gallery {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 12px;
+            margin-top: 15px;
         }
         .gallery-item {
             border: 1px solid #ddd;
@@ -134,30 +150,34 @@
         .gallery-item.selected { border: 3px solid #2ecc71; box-shadow: 0 0 0 2px white, 0 0 0 4px #2ecc71; }
         .gallery-item img { width: 100%; height: auto; display: block; background: #f8f9fa; }
         .info {
-            padding: 8px;
+            padding: 6px 8px;
             background: #ecf0f1;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
+            flex-wrap: wrap;
+            gap: 4px;
         }
         .circle-badge {
             display: inline-block;
-            width: 24px;
-            height: 24px;
+            width: 22px;
+            height: 22px;
             border-radius: 50%;
             background: #ccc;
             border: 1px solid #333;
+            flex-shrink: 0;
         }
         .circle-badge.white { background: white; }
         .circle-badge.black { background: black; }
         .batch-bar {
             display: flex;
             flex-wrap: wrap;
-            gap: 10px;
+            gap: 8px;
             align-items: center;
             margin-bottom: 15px;
         }
+        .batch-bar .btn { flex: 1; min-width: 80px; }
         .hidden { display: none; }
         .notification {
             position: fixed;
@@ -166,38 +186,48 @@
             right: 20px;
             background: #2ecc71;
             color: white;
-            padding: 12px;
+            padding: 14px;
             border-radius: 8px;
             text-align: center;
             z-index: 1000;
             opacity: 0;
             transition: 0.3s;
             pointer-events: none;
+            font-size: 1rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         .notification.show { opacity: 1; }
         .modal {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.7);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 2000;
+            padding: 20px;
         }
         .modal-content {
             background: white;
             padding: 20px;
             border-radius: 12px;
             text-align: center;
-            max-width: 90%;
+            max-width: 95%;
+            width: 400px;
         }
-        .modal-content img { max-width: 100%; max-height: 70vh; margin: 10px 0; }
+        .modal-content img { max-width: 100%; max-height: 50vh; margin: 10px 0; border-radius: 6px; }
+        @media (max-width: 600px) {
+            .precision-input { flex: 1 0 100%; }
+            .btn { font-size: 0.9rem; padding: 10px 14px; min-height: 44px; }
+            .gallery { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+            .batch-bar .btn { flex: 1 0 45%; }
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h1><i class="fas fa-chess-board"></i> ChessExtract Pro · Corte de Precisión</h1>
-    <p>Controles numéricos en píxeles reales de la imagen original para un recorte exacto. Arrastra o ajusta los campos.</p>
+    <p>Controles numéricos en píxeles reales para recorte exacto. Arrastra o ajusta los campos.</p>
 
     <div class="card">
         <h3><i class="fas fa-upload"></i> 1. Subir imágenes</h3>
@@ -206,7 +236,7 @@
     </div>
 
     <div id="cropSection" class="card hidden">
-        <h3><i class="fas fa-crop-alt"></i> 2. Ajuste de precisión (coordenadas exactas)</h3>
+        <h3><i class="fas fa-crop-alt"></i> 2. Ajuste de precisión</h3>
         <div class="precision-panel">
             <div class="precision-input">
                 <label>X (orig px)</label>
@@ -228,7 +258,7 @@
             <button id="zoom100Btn" class="btn btn-warning"><i class="fas fa-search-plus"></i> Ver al 100%</button>
             <div class="coord-info" id="originalSizeInfo"></div>
         </div>
-        <div id="cropContainer" style="position: relative; display: inline-block; width: 100%;">
+        <div id="cropContainer">
             <img id="imageToCrop" style="max-width:100%; display:block; margin:0 auto;">
             <div class="crop-box hidden">
                 <div class="resize-handle resize-nw"></div>
@@ -237,15 +267,15 @@
                 <div class="resize-handle resize-se"></div>
             </div>
         </div>
-        <div style="margin: 10px 0;">
-            <button id="saveTemplateBtn" class="btn"><i class="fas fa-save"></i> Guardar plantilla (proporcional)</button>
+        <div style="margin: 10px 0; display: flex; flex-wrap: wrap; gap: 8px;">
+            <button id="saveTemplateBtn" class="btn"><i class="fas fa-save"></i> Guardar plantilla</button>
             <button id="applyTemplateBtn" class="btn" disabled><i class="fas fa-paste"></i> Aplicar a esta</button>
             <button id="applyToAllBtn" class="btn" disabled><i class="fas fa-clone"></i> Aplicar a todas</button>
             <button id="processAllBtn" class="btn btn-success"><i class="fas fa-bolt"></i> Procesar todas</button>
         </div>
         <div class="nav-buttons">
             <button id="prevBtn" class="btn" disabled><i class="fas fa-chevron-left"></i> Anterior</button>
-            <button id="cropOneBtn" class="btn btn-success" disabled><i class="fas fa-crop-alt"></i> Recortar y guardar (preciso)</button>
+            <button id="cropOneBtn" class="btn btn-success" disabled><i class="fas fa-crop-alt"></i> Recortar y guardar</button>
             <button id="nextBtn" class="btn" disabled>Siguiente <i class="fas fa-chevron-right"></i></button>
         </div>
         <div id="imageCounter" style="text-align:center; margin-top:10px;"></div>
@@ -254,11 +284,11 @@
     <div id="gallerySection" class="card hidden">
         <h3><i class="fas fa-images"></i> 3. Tableros guardados (<span id="boardCount">0</span>)</h3>
         <div class="batch-bar">
-            <button id="selectAllBtn" class="btn"><i class="fas fa-check-square"></i> Seleccionar todo</button>
+            <button id="selectAllBtn" class="btn"><i class="fas fa-check-square"></i> Todo</button>
             <button id="deselectAllBtn" class="btn">Deseleccionar</button>
-            <button id="batchWhiteBtn" class="btn btn-success"><i class="fas fa-circle" style="color:white; text-shadow:0 0 1px black;"></i> Blancas (seleccionados)</button>
-            <button id="batchBlackBtn" class="btn btn-dark"><i class="fas fa-circle" style="color:black;"></i> Negras (seleccionados)</button>
-            <button id="downloadSelectedBtn" class="btn btn-warning"><i class="fas fa-download"></i> Descargar seleccionadas</button>
+            <button id="batchWhiteBtn" class="btn btn-success"><i class="fas fa-circle" style="color:white; text-shadow:0 0 1px black;"></i> Blancas (sel)</button>
+            <button id="batchBlackBtn" class="btn btn-dark"><i class="fas fa-circle" style="color:black;"></i> Negras (sel)</button>
+            <button id="downloadSelectedBtn" class="btn btn-warning"><i class="fas fa-download"></i> Descargar sel</button>
             <button id="downloadAllBtn" class="btn btn-success"><i class="fas fa-download"></i> Descargar todas</button>
             <button id="clearAllBtn" class="btn btn-danger"><i class="fas fa-trash"></i> Eliminar todas</button>
         </div>
@@ -268,542 +298,682 @@
 <div id="notification" class="notification"></div>
 
 <script>
-    // DOM elements
-    const imageInput = document.getElementById('imageInput');
-    const loadBtn = document.getElementById('loadBtn');
-    const cropSection = document.getElementById('cropSection');
-    const imageToCrop = document.getElementById('imageToCrop');
-    const cropOneBtn = document.getElementById('cropOneBtn');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const imageCounter = document.getElementById('imageCounter');
-    const saveTemplateBtn = document.getElementById('saveTemplateBtn');
-    const applyTemplateBtn = document.getElementById('applyTemplateBtn');
-    const applyToAllBtn = document.getElementById('applyToAllBtn');
-    const processAllBtn = document.getElementById('processAllBtn');
-    const gallerySection = document.getElementById('gallerySection');
-    const gallery = document.getElementById('gallery');
-    const boardCountSpan = document.getElementById('boardCount');
-    const selectAllBtn = document.getElementById('selectAllBtn');
-    const deselectAllBtn = document.getElementById('deselectAllBtn');
-    const batchWhiteBtn = document.getElementById('batchWhiteBtn');
-    const batchBlackBtn = document.getElementById('batchBlackBtn');
-    const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
-    const downloadAllBtn = document.getElementById('downloadAllBtn');
-    const clearAllBtn = document.getElementById('clearAllBtn');
-    const notification = document.getElementById('notification');
-    const cropXInput = document.getElementById('cropX');
-    const cropYInput = document.getElementById('cropY');
-    const cropWInput = document.getElementById('cropW');
-    const cropHInput = document.getElementById('cropH');
-    const applyNumericBtn = document.getElementById('applyNumericBtn');
-    const zoom100Btn = document.getElementById('zoom100Btn');
-    const originalSizeInfo = document.getElementById('originalSizeInfo');
+// ============================================================
+//  ChessExtract Pro - Versión con soporte táctil completo
+// ============================================================
 
-    let imageFiles = [];
-    let currentImageIndex = 0;
-    let originalImage = null;        // HTMLImageElement with full resolution
-    let originalWidth = 0, originalHeight = 0;
-    let cropBox = null;
-    // coordenadas en píxeles de la imagen ORIGINAL
-    let cropOrigX = 0, cropOrigY = 0, cropOrigW = 200, cropOrigH = 200;
-    let isDragging = false, isResizing = false, resizeDir = null;
-    let startX, startY;
-    let cropTemplate = null;          // valores normalizados (0..1) relativos a original
-    let templateAppliedToAll = false;
-    let boards = [];                  // { rawDataUrl, turno }
-    let selectedIndices = new Set();
-    let currentZoom100 = false;
-    let originalContainerStyle = null;
+// DOM elements
+const imageInput = document.getElementById('imageInput');
+const loadBtn = document.getElementById('loadBtn');
+const cropSection = document.getElementById('cropSection');
+const imageToCrop = document.getElementById('imageToCrop');
+const cropOneBtn = document.getElementById('cropOneBtn');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+const imageCounter = document.getElementById('imageCounter');
+const saveTemplateBtn = document.getElementById('saveTemplateBtn');
+const applyTemplateBtn = document.getElementById('applyTemplateBtn');
+const applyToAllBtn = document.getElementById('applyToAllBtn');
+const processAllBtn = document.getElementById('processAllBtn');
+const gallerySection = document.getElementById('gallerySection');
+const gallery = document.getElementById('gallery');
+const boardCountSpan = document.getElementById('boardCount');
+const selectAllBtn = document.getElementById('selectAllBtn');
+const deselectAllBtn = document.getElementById('deselectAllBtn');
+const batchWhiteBtn = document.getElementById('batchWhiteBtn');
+const batchBlackBtn = document.getElementById('batchBlackBtn');
+const downloadSelectedBtn = document.getElementById('downloadSelectedBtn');
+const downloadAllBtn = document.getElementById('downloadAllBtn');
+const clearAllBtn = document.getElementById('clearAllBtn');
+const notification = document.getElementById('notification');
+const cropXInput = document.getElementById('cropX');
+const cropYInput = document.getElementById('cropY');
+const cropWInput = document.getElementById('cropW');
+const cropHInput = document.getElementById('cropH');
+const applyNumericBtn = document.getElementById('applyNumericBtn');
+const zoom100Btn = document.getElementById('zoom100Btn');
+const originalSizeInfo = document.getElementById('originalSizeInfo');
 
-    function showNotification(msg, isError = false) {
-        notification.textContent = msg;
-        notification.style.backgroundColor = isError ? '#e74c3c' : '#2ecc71';
-        notification.classList.add('show');
-        setTimeout(() => notification.classList.remove('show'), 2000);
+let imageFiles = [];
+let currentImageIndex = 0;
+let originalImage = null;
+let originalWidth = 0, originalHeight = 0;
+let cropBox = null;
+let cropOrigX = 0, cropOrigY = 0, cropOrigW = 200, cropOrigH = 200;
+let isDragging = false, isResizing = false, resizeDir = null;
+let startX = 0, startY = 0;
+let cropTemplate = null;
+let templateAppliedToAll = false;
+let boards = [];
+let selectedIndices = new Set();
+let currentZoom100 = false;
+
+// --------------------------------------------------------------
+//  NOTIFICACIONES
+// --------------------------------------------------------------
+function showNotification(msg, isError = false) {
+    notification.textContent = msg;
+    notification.style.backgroundColor = isError ? '#e74c3c' : '#2ecc71';
+    notification.classList.add('show');
+    clearTimeout(notification._timeout);
+    notification._timeout = setTimeout(() => notification.classList.remove('show'), 3000);
+}
+
+// --------------------------------------------------------------
+//  SINCRONIZAR UI CON COORDENADAS ORIGINALES
+// --------------------------------------------------------------
+function syncUIFromOrig() {
+    cropXInput.value = Math.round(cropOrigX);
+    cropYInput.value = Math.round(cropOrigY);
+    cropWInput.value = Math.round(cropOrigW);
+    cropHInput.value = Math.round(cropOrigH);
+    if (originalWidth && originalHeight) {
+        originalSizeInfo.innerText = `Original: ${originalWidth}×${originalHeight} px | Recorte: ${Math.round(cropOrigW)}×${Math.round(cropOrigH)}`;
     }
+    updateVisualCropBox();
+}
 
-    // Actualiza los campos numéricos y la caja visual según las coordenadas originales actuales
-    function syncUIFromOrig() {
-        cropXInput.value = cropOrigX;
-        cropYInput.value = cropOrigY;
-        cropWInput.value = cropOrigW;
-        cropHInput.value = cropOrigH;
-        if (originalWidth && originalHeight) {
-            originalSizeInfo.innerText = `Original: ${originalWidth}×${originalHeight} px | Recorte: ${cropOrigW}×${cropOrigH}`;
-        }
-        updateVisualCropBox();
+// --------------------------------------------------------------
+//  ACTUALIZAR CAJA VISUAL (escala)
+// --------------------------------------------------------------
+function updateVisualCropBox() {
+    if (!cropBox || !originalWidth || !originalHeight) return;
+    const imgRect = imageToCrop.getBoundingClientRect();
+    // Escala visual = ancho mostrado / ancho real original
+    const scaleX = imgRect.width / originalWidth;
+    const scaleY = imgRect.height / originalHeight;
+    // Usamos la misma escala en ambos ejes (mantener proporción)
+    const scale = Math.min(scaleX, scaleY); // o podríamos usar scaleX
+    // A veces el contenedor puede tener padding, mejor usar el tamaño del elemento img
+    const left = cropOrigX * scale;
+    const top = cropOrigY * scale;
+    const w = cropOrigW * scale;
+    const h = cropOrigH * scale;
+    cropBox.style.left = left + 'px';
+    cropBox.style.top = top + 'px';
+    cropBox.style.width = w + 'px';
+    cropBox.style.height = h + 'px';
+}
+
+// --------------------------------------------------------------
+//  APLICAR COORDENADAS NUMÉRICAS
+// --------------------------------------------------------------
+function applyNumericCrop() {
+    let x = parseInt(cropXInput.value, 10);
+    let y = parseInt(cropYInput.value, 10);
+    let w = parseInt(cropWInput.value, 10);
+    let h = parseInt(cropHInput.value, 10);
+    if (isNaN(x)) x = 0;
+    if (isNaN(y)) y = 0;
+    if (isNaN(w) || w <= 0) w = 100;
+    if (isNaN(h) || h <= 0) h = 100;
+    if (x + w > originalWidth) w = originalWidth - x;
+    if (y + h > originalHeight) h = originalHeight - y;
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (w <= 0) w = 10;
+    if (h <= 0) h = 10;
+    cropOrigX = x;
+    cropOrigY = y;
+    cropOrigW = w;
+    cropOrigH = h;
+    syncUIFromOrig();
+    showNotification(`Recorte ajustado a (${cropOrigX},${cropOrigY}) ${cropOrigW}×${cropOrigH} px`);
+}
+
+// --------------------------------------------------------------
+//  RECORTAR IMAGEN (coordenadas exactas en original)
+// --------------------------------------------------------------
+function cropImagePrecise() {
+    if (!originalImage || originalWidth === 0) return null;
+    let x = Math.round(cropOrigX);
+    let y = Math.round(cropOrigY);
+    let w = Math.round(cropOrigW);
+    let h = Math.round(cropOrigH);
+    if (x < 0) x = 0;
+    if (y < 0) y = 0;
+    if (x + w > originalWidth) w = originalWidth - x;
+    if (y + h > originalHeight) h = originalHeight - y;
+    if (w <= 0 || h <= 0) return null;
+    const canvas = document.createElement('canvas');
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(originalImage, x, y, w, h, 0, 0, w, h);
+    return canvas.toDataURL('image/jpeg', 0.95);
+}
+
+// --------------------------------------------------------------
+//  GALERÍA
+// --------------------------------------------------------------
+function addBoard(rawDataUrl, turno = null) {
+    boards.push({ rawDataUrl, turno });
+    renderGallery();
+}
+
+function renderGallery() {
+    gallery.innerHTML = '';
+    boardCountSpan.textContent = boards.length;
+    if (boards.length === 0) {
+        gallerySection.classList.add('hidden');
+        return;
     }
-
-    // Convierte coordenadas originales a posición/ tamaño en el elemento mostrado (escalado)
-    function updateVisualCropBox() {
-        if (!cropBox || !originalWidth || !originalHeight) return;
-        const displayRect = imageToCrop.getBoundingClientRect();
-        const containerRect = document.getElementById('cropContainer').getBoundingClientRect();
-        // escala de visualización: ancho mostrado / ancho real original
-        const scale = imageToCrop.width / originalWidth;
-        const leftOrigPx = cropOrigX * scale;
-        const topOrigPx = cropOrigY * scale;
-        const widthOrigPx = cropOrigW * scale;
-        const heightOrigPx = cropOrigH * scale;
-        cropBox.style.left = leftOrigPx + 'px';
-        cropBox.style.top = topOrigPx + 'px';
-        cropBox.style.width = widthOrigPx + 'px';
-        cropBox.style.height = heightOrigPx + 'px';
-    }
-
-    // Aplica coordenadas desde los campos numéricos, validando límites
-    function applyNumericCrop() {
-        let x = parseInt(cropXInput.value, 10);
-        let y = parseInt(cropYInput.value, 10);
-        let w = parseInt(cropWInput.value, 10);
-        let h = parseInt(cropHInput.value, 10);
-        if (isNaN(x)) x = 0;
-        if (isNaN(y)) y = 0;
-        if (isNaN(w) || w <= 0) w = 100;
-        if (isNaN(h) || h <= 0) h = 100;
-        if (x + w > originalWidth) w = originalWidth - x;
-        if (y + h > originalHeight) h = originalHeight - y;
-        if (x < 0) x = 0;
-        if (y < 0) y = 0;
-        if (w <= 0) w = 10;
-        if (h <= 0) h = 10;
-        cropOrigX = x;
-        cropOrigY = y;
-        cropOrigW = w;
-        cropOrigH = h;
-        syncUIFromOrig();
-        showNotification(`Recorte ajustado a (${cropOrigX},${cropOrigY}) ${cropOrigW}×${cropOrigH} px`);
-    }
-
-    // Recorta la imagen original usando coordenadas exactas (enteras) y devuelve dataURL
-    function cropImagePrecise() {
-        if (!originalImage || originalWidth === 0) return null;
-        let x = Math.round(cropOrigX);
-        let y = Math.round(cropOrigY);
-        let w = Math.round(cropOrigW);
-        let h = Math.round(cropOrigH);
-        if (x < 0) x = 0;
-        if (y < 0) y = 0;
-        if (x + w > originalWidth) w = originalWidth - x;
-        if (y + h > originalHeight) h = originalHeight - y;
-        if (w <= 0 || h <= 0) return null;
-        const canvas = document.createElement('canvas');
-        canvas.width = w;
-        canvas.height = h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(originalImage, x, y, w, h, 0, 0, w, h);
-        return canvas.toDataURL('image/jpeg', 0.95);
-    }
-
-    // Añadir a galería sin círculo
-    function addBoard(rawDataUrl, turno = null) {
-        boards.push({ rawDataUrl, turno });
-        renderGallery();
-    }
-
-    function updateBoardTurn(index, turno) {
-        boards[index].turno = turno;
-        renderGallery();
-    }
-
-    function renderGallery() {
-        gallery.innerHTML = '';
-        boardCountSpan.textContent = boards.length;
-        if (boards.length === 0) {
-            gallerySection.classList.add('hidden');
-            return;
-        }
-        gallerySection.classList.remove('hidden');
-        boards.forEach((board, idx) => {
-            const div = document.createElement('div');
-            div.className = `gallery-item ${selectedIndices.has(idx) ? 'selected' : ''}`;
-            div.setAttribute('data-idx', idx);
-            const img = document.createElement('img');
-            img.src = board.rawDataUrl;
-            img.style.cursor = 'pointer';
-            img.addEventListener('click', (e) => {
-                e.stopPropagation();
-                showTurnModal(idx);
-            });
-            const info = document.createElement('div');
-            info.className = 'info';
-            const badgeSpan = document.createElement('span');
-            badgeSpan.className = `circle-badge ${board.turno === 'white' ? 'white' : (board.turno === 'black' ? 'black' : '')}`;
-            const turnText = document.createElement('span');
-            turnText.textContent = board.turno === 'white' ? 'Blancas' : (board.turno === 'black' ? 'Negras' : 'Sin turno');
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.checked = selectedIndices.has(idx);
-            checkbox.addEventListener('change', (e) => {
-                if (checkbox.checked) selectedIndices.add(idx);
-                else selectedIndices.delete(idx);
-                renderGallery();
-            });
-            info.appendChild(badgeSpan);
-            info.appendChild(turnText);
-            info.appendChild(checkbox);
-            div.appendChild(img);
-            div.appendChild(info);
-            gallery.appendChild(div);
+    gallerySection.classList.remove('hidden');
+    boards.forEach((board, idx) => {
+        const div = document.createElement('div');
+        div.className = `gallery-item ${selectedIndices.has(idx) ? 'selected' : ''}`;
+        div.setAttribute('data-idx', idx);
+        const img = document.createElement('img');
+        img.src = board.rawDataUrl;
+        img.style.cursor = 'pointer';
+        img.addEventListener('click', (e) => {
+            e.stopPropagation();
+            showTurnModal(idx);
         });
-    }
+        const info = document.createElement('div');
+        info.className = 'info';
+        const badgeSpan = document.createElement('span');
+        badgeSpan.className = `circle-badge ${board.turno === 'white' ? 'white' : (board.turno === 'black' ? 'black' : '')}`;
+        const turnText = document.createElement('span');
+        turnText.textContent = board.turno === 'white' ? 'Blancas' : (board.turno === 'black' ? 'Negras' : 'Sin turno');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = selectedIndices.has(idx);
+        checkbox.addEventListener('change', (e) => {
+            if (checkbox.checked) selectedIndices.add(idx);
+            else selectedIndices.delete(idx);
+            renderGallery();
+        });
+        info.appendChild(badgeSpan);
+        info.appendChild(turnText);
+        info.appendChild(checkbox);
+        div.appendChild(img);
+        div.appendChild(info);
+        gallery.appendChild(div);
+    });
+}
 
-    function showTurnModal(idx) {
-        const board = boards[idx];
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <h3>Selecciona el turno</h3>
-                <img src="${board.rawDataUrl}" style="max-width: 300px;">
-                <div style="display: flex; gap: 15px; justify-content: center; margin: 15px 0;">
-                    <button id="modalWhite" style="background:white; color:black; border:1px solid #ccc; padding:10px 20px; border-radius:8px;">♔ Blancas</button>
-                    <button id="modalBlack" style="background:black; color:white; padding:10px 20px; border-radius:8px;">♚ Negras</button>
-                    <button id="modalClear" style="background:#ccc; padding:10px 20px; border-radius:8px;">Sin círculo</button>
-                </div>
-                <button id="modalClose" class="btn">Cerrar</button>
+function showTurnModal(idx) {
+    const board = boards[idx];
+    const modal = document.createElement('div');
+    modal.className = 'modal';
+    modal.innerHTML = `
+        <div class="modal-content">
+            <h3>Selecciona el turno</h3>
+            <img src="${board.rawDataUrl}" style="max-width: 300px;">
+            <div style="display: flex; gap: 15px; justify-content: center; margin: 15px 0; flex-wrap: wrap;">
+                <button id="modalWhite" style="background:white; color:black; border:1px solid #ccc; padding:12px 20px; border-radius:8px; font-size:1.2rem;">♔ Blancas</button>
+                <button id="modalBlack" style="background:black; color:white; padding:12px 20px; border-radius:8px; font-size:1.2rem;">♚ Negras</button>
+                <button id="modalClear" style="background:#ccc; padding:12px 20px; border-radius:8px; font-size:1rem;">Sin círculo</button>
             </div>
-        `;
-        document.body.appendChild(modal);
-        document.getElementById('modalWhite').onclick = () => {
-            board.turno = 'white';
-            renderGallery();
-            document.body.removeChild(modal);
-        };
-        document.getElementById('modalBlack').onclick = () => {
-            board.turno = 'black';
-            renderGallery();
-            document.body.removeChild(modal);
-        };
-        document.getElementById('modalClear').onclick = () => {
-            board.turno = null;
-            renderGallery();
-            document.body.removeChild(modal);
-        };
-        document.getElementById('modalClose').onclick = () => document.body.removeChild(modal);
-    }
-
-    function applyTurnToSelectedAndOppositeToRest(turnForSelected) {
-        if (boards.length === 0) return;
-        const otherTurn = turnForSelected === 'white' ? 'black' : 'white';
-        for (let i = 0; i < boards.length; i++) {
-            if (selectedIndices.has(i)) boards[i].turno = turnForSelected;
-            else boards[i].turno = otherTurn;
-        }
+            <button id="modalClose" class="btn">Cerrar</button>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    document.getElementById('modalWhite').onclick = () => {
+        board.turno = 'white';
         renderGallery();
-        showNotification(`Seleccionadas → ${turnForSelected === 'white' ? 'Blancas' : 'Negras'}. Resto → ${otherTurn === 'white' ? 'Blancas' : 'Negras'}.`);
+        document.body.removeChild(modal);
+    };
+    document.getElementById('modalBlack').onclick = () => {
+        board.turno = 'black';
+        renderGallery();
+        document.body.removeChild(modal);
+    };
+    document.getElementById('modalClear').onclick = () => {
+        board.turno = null;
+        renderGallery();
+        document.body.removeChild(modal);
+    };
+    document.getElementById('modalClose').onclick = () => document.body.removeChild(modal);
+}
+
+function applyTurnToSelectedAndOppositeToRest(turnForSelected) {
+    if (boards.length === 0) return;
+    const otherTurn = turnForSelected === 'white' ? 'black' : 'white';
+    for (let i = 0; i < boards.length; i++) {
+        if (selectedIndices.has(i)) boards[i].turno = turnForSelected;
+        else boards[i].turno = otherTurn;
     }
+    renderGallery();
+    showNotification(`Seleccionadas → ${turnForSelected === 'white' ? 'Blancas' : 'Negras'}. Resto → ${otherTurn === 'white' ? 'Blancas' : 'Negras'}.`);
+}
 
-    function addCircleToImage(dataUrl, turno, callback) {
-        if (turno !== 'white' && turno !== 'black') {
-            callback(dataUrl);
-            return;
-        }
-        const img = new Image();
-        img.onload = () => {
-            const canvas = document.createElement('canvas');
-            canvas.width = img.width;
-            canvas.height = img.height;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(img, 0, 0);
-            let circleSize = Math.max(20, Math.min(40, Math.floor(img.width / 15)));
-            const padding = 8;
-            const x = img.width - circleSize - padding;
-            const y = img.height - circleSize - padding;
-            ctx.beginPath();
-            ctx.arc(x + circleSize/2, y + circleSize/2, circleSize/2, 0, 2 * Math.PI);
-            ctx.fillStyle = turno === 'white' ? '#ffffff' : '#000000';
-            ctx.fill();
-            ctx.strokeStyle = '#333333';
-            ctx.lineWidth = 2;
-            ctx.stroke();
-            callback(canvas.toDataURL('image/jpeg', 0.95));
-        };
-        img.src = dataUrl;
+function addCircleToImage(dataUrl, turno, callback) {
+    if (turno !== 'white' && turno !== 'black') {
+        callback(dataUrl);
+        return;
     }
+    const img = new Image();
+    img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        let circleSize = Math.max(20, Math.min(40, Math.floor(img.width / 15)));
+        const padding = 8;
+        const x = img.width - circleSize - padding;
+        const y = img.height - circleSize - padding;
+        ctx.beginPath();
+        ctx.arc(x + circleSize/2, y + circleSize/2, circleSize/2, 0, 2 * Math.PI);
+        ctx.fillStyle = turno === 'white' ? '#ffffff' : '#000000';
+        ctx.fill();
+        ctx.strokeStyle = '#333333';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        callback(canvas.toDataURL('image/jpeg', 0.95));
+    };
+    img.src = dataUrl;
+}
 
-    function downloadBoard(index, callback) {
-        const board = boards[index];
-        addCircleToImage(board.rawDataUrl, board.turno, (finalUrl) => {
-            const link = document.createElement('a');
-            link.download = `tablero_${index+1}${board.turno ? '_'+board.turno : ''}.jpg`;
-            link.href = finalUrl;
-            link.click();
-            if (callback) callback();
-        });
+function downloadBoard(index, callback) {
+    const board = boards[index];
+    addCircleToImage(board.rawDataUrl, board.turno, (finalUrl) => {
+        const link = document.createElement('a');
+        link.download = `tablero_${index+1}${board.turno ? '_'+board.turno : ''}.jpg`;
+        link.href = finalUrl;
+        link.click();
+        if (callback) callback();
+    });
+}
+
+async function downloadAll() {
+    if (boards.length === 0) return;
+    showNotification('Preparando descarga de todas...');
+    for (let i = 0; i < boards.length; i++) {
+        await new Promise(resolve => downloadBoard(i, resolve));
+        await new Promise(r => setTimeout(r, 150));
     }
+    showNotification('Descarga completada');
+}
 
-    async function downloadAll() {
-        if (boards.length === 0) return;
-        showNotification('Preparando descarga de todas...');
-        for (let i = 0; i < boards.length; i++) {
-            await new Promise(resolve => downloadBoard(i, resolve));
-            await new Promise(r => setTimeout(r, 150));
-        }
-        showNotification('Descarga completada');
+async function downloadSelected() {
+    const indices = Array.from(selectedIndices).sort((a,b)=>a-b);
+    if (indices.length === 0) { showNotification('No hay seleccionadas', true); return; }
+    showNotification(`Descargando ${indices.length} seleccionadas...`);
+    for (let idx of indices) {
+        await new Promise(resolve => downloadBoard(idx, resolve));
+        await new Promise(r => setTimeout(r, 150));
     }
+    showNotification('Descarga completada');
+}
 
-    async function downloadSelected() {
-        const indices = Array.from(selectedIndices).sort((a,b)=>a-b);
-        if (indices.length === 0) { showNotification('No hay seleccionadas', true); return; }
-        showNotification(`Descargando ${indices.length} seleccionadas...`);
-        for (let idx of indices) {
-            await new Promise(resolve => downloadBoard(idx, resolve));
-            await new Promise(r => setTimeout(r, 150));
-        }
-        showNotification('Descarga completada');
+function clearAll() {
+    if (confirm('¿Eliminar todos los tableros?')) {
+        boards = [];
+        selectedIndices.clear();
+        renderGallery();
+        showNotification('Todos eliminados');
     }
+}
 
-    function clearAll() {
-        if (confirm('¿Eliminar todos los tableros?')) {
-            boards = [];
-            selectedIndices.clear();
-            renderGallery();
-        }
+// --------------------------------------------------------------
+//  EVENTOS DE ARRASTRE Y REDIMENSIÓN (ratón + táctil)
+// --------------------------------------------------------------
+
+// Obtener coordenadas del evento (ratón o táctil)
+function getPointerPos(e) {
+    if (e.touches) {
+        return { clientX: e.touches[0].clientX, clientY: e.touches[0].clientY };
     }
+    return { clientX: e.clientX, clientY: e.clientY };
+}
 
-    // ---- Interacción visual con arrastre y resize (sobre la imagen escalada) ----
-    function attachDragEvents() {
-        const handles = cropBox.querySelectorAll('.resize-handle');
-        handles.forEach(h => h.removeEventListener('mousedown', startResize));
-        handles.forEach(h => h.addEventListener('mousedown', startResize));
-        cropBox.removeEventListener('mousedown', startDrag);
-        cropBox.addEventListener('mousedown', startDrag);
-        document.removeEventListener('mousemove', onMouseMove);
-        document.removeEventListener('mouseup', stopDrag);
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', stopDrag);
-    }
+// Función de movimiento compartida
+function processDrag(clientX, clientY) {
+    if (!isDragging && !isResizing) return;
+    const imgRect = imageToCrop.getBoundingClientRect();
+    // Escala visual = ancho mostrado / ancho original
+    const scaleX = imgRect.width / originalWidth;
+    const scaleY = imgRect.height / originalHeight;
+    // Usamos escala uniforme (mantener proporción)
+    const scale = Math.min(scaleX, scaleY);
+    // Si la imagen no está escalada uniformemente, usar ambos ejes por separado
+    const dx = (clientX - startX) / scale;
+    const dy = (clientY - startY) / scale;
 
-    function startDrag(e) { if(e.target.classList.contains('resize-handle')) return; isDragging=true; startX=e.clientX; startY=e.clientY; }
-    function startResize(e) { isResizing=true; resizeDir=e.target.classList[1]; startX=e.clientX; startY=e.clientY; }
-
-    function onMouseMove(e) {
-        if (!isDragging && !isResizing) return;
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-        const scale = imageToCrop.width / originalWidth; // factor visual a original
-        if (isDragging) {
-            let deltaOrigX = dx / scale;
-            let deltaOrigY = dy / scale;
-            let newX = cropOrigX + deltaOrigX;
-            let newY = cropOrigY + deltaOrigY;
-            if (newX >= 0 && newX + cropOrigW <= originalWidth) cropOrigX = newX;
-            if (newY >= 0 && newY + cropOrigH <= originalHeight) cropOrigY = newY;
-            cropOrigX = Math.round(cropOrigX);
-            cropOrigY = Math.round(cropOrigY);
-        } else {
-            let deltaOrig = (resizeDir.includes('w') ? -dx/scale : (resizeDir.includes('e') ? dx/scale : 0));
-            let deltaOrigH = (resizeDir.includes('n') ? -dy/scale : (resizeDir.includes('s') ? dy/scale : 0));
-            let newW = cropOrigW;
-            let newH = cropOrigH;
-            let newX = cropOrigX;
-            let newY = cropOrigY;
-            if (resizeDir.includes('w')) { newW -= deltaOrig; newX += deltaOrig; }
-            if (resizeDir.includes('e')) newW += deltaOrig;
-            if (resizeDir.includes('n')) { newH -= deltaOrigH; newY += deltaOrigH; }
-            if (resizeDir.includes('s')) newH += deltaOrigH;
-            if (newW >= 10 && newX >= 0 && newX + newW <= originalWidth) {
-                cropOrigW = Math.round(newW);
-                cropOrigX = Math.round(newX);
-            }
-            if (newH >= 10 && newY >= 0 && newY + newH <= originalHeight) {
-                cropOrigH = Math.round(newH);
-                cropOrigY = Math.round(newY);
-            }
-        }
-        syncUIFromOrig();
-        startX = e.clientX;
-        startY = e.clientY;
-    }
-    function stopDrag() { isDragging=false; isResizing=false; }
-
-    // Guardar plantilla (proporciones normalizadas respecto al original)
-    function saveTemplate() {
-        if (originalWidth && originalHeight) {
-            cropTemplate = {
-                x: cropOrigX / originalWidth,
-                y: cropOrigY / originalHeight,
-                w: cropOrigW / originalWidth,
-                h: cropOrigH / originalHeight
-            };
-            showNotification('Plantilla guardada (proporciones relativas)');
-            applyTemplateBtn.disabled = false;
-            applyToAllBtn.disabled = false;
-        } else {
-            showNotification('Error: imagen no cargada', true);
-        }
-    }
-
-    function applyTemplate() {
-        if (!cropTemplate || !originalWidth) return;
-        cropOrigX = cropTemplate.x * originalWidth;
-        cropOrigY = cropTemplate.y * originalHeight;
-        cropOrigW = cropTemplate.w * originalWidth;
-        cropOrigH = cropTemplate.h * originalHeight;
+    if (isDragging) {
+        let newX = cropOrigX + dx;
+        let newY = cropOrigY + dy;
+        if (newX >= 0 && newX + cropOrigW <= originalWidth) cropOrigX = newX;
+        if (newY >= 0 && newY + cropOrigH <= originalHeight) cropOrigY = newY;
         cropOrigX = Math.round(cropOrigX);
         cropOrigY = Math.round(cropOrigY);
-        cropOrigW = Math.max(10, Math.round(cropOrigW));
-        cropOrigH = Math.max(10, Math.round(cropOrigH));
-        if (cropOrigX + cropOrigW > originalWidth) cropOrigW = originalWidth - cropOrigX;
-        if (cropOrigY + cropOrigH > originalHeight) cropOrigH = originalHeight - cropOrigY;
-        syncUIFromOrig();
-        showNotification('Plantilla aplicada a esta imagen');
-    }
-
-    function applyToAll() {
-        templateAppliedToAll = true;
-        applyTemplate();
-        showNotification('La plantilla se aplicará automáticamente al procesar todas');
-    }
-
-    function cropAndSaveOne() {
-        const raw = cropImagePrecise();
-        if (!raw) { showNotification('Error al recortar (coordenadas inválidas)', true); return; }
-        addBoard(raw, null);
-        if (currentImageIndex < imageFiles.length - 1) nextImage();
-        else showNotification('Guardado. Puedes asignar turnos en la galería.');
-    }
-
-    function processAll() {
-        if (!imageFiles.length) { showNotification('No hay imágenes', true); return; }
-        if (cropTemplate) templateAppliedToAll = true;
-        let idx = 0;
-        function processNext() {
-            if (idx >= imageFiles.length) {
-                showNotification(`Procesado ${boards.length} tableros. Ahora asigna los turnos.`);
-                renderGallery();
-                return;
-            }
-            currentImageIndex = idx;
-            const reader = new FileReader();
-            reader.onload = e => {
-                const tempImg = new Image();
-                tempImg.onload = () => {
-                    originalImage = tempImg;
-                    originalWidth = originalImage.width;
-                    originalHeight = originalImage.height;
-                    imageToCrop.src = e.target.result;
-                    setTimeout(() => {
-                        if (cropTemplate && templateAppliedToAll) {
-                            cropOrigX = cropTemplate.x * originalWidth;
-                            cropOrigY = cropTemplate.y * originalHeight;
-                            cropOrigW = cropTemplate.w * originalWidth;
-                            cropOrigH = cropTemplate.h * originalHeight;
-                            cropOrigX = Math.round(cropOrigX);
-                            cropOrigY = Math.round(cropOrigY);
-                            cropOrigW = Math.max(10, Math.round(cropOrigW));
-                            cropOrigH = Math.max(10, Math.round(cropOrigH));
-                            syncUIFromOrig();
-                        }
-                        const raw = cropImagePrecise();
-                        if (raw) boards.push({ rawDataUrl: raw, turno: null });
-                        idx++;
-                        processNext();
-                    }, 200);
-                };
-                tempImg.src = e.target.result;
-            };
-            reader.readAsDataURL(imageFiles[idx]);
+    } else if (isResizing) {
+        let deltaW = 0, deltaH = 0, deltaX = 0, deltaY = 0;
+        if (resizeDir.includes('e')) deltaW = dx;
+        if (resizeDir.includes('w')) { deltaW = -dx; deltaX = dx; }
+        if (resizeDir.includes('s')) deltaH = dy;
+        if (resizeDir.includes('n')) { deltaH = -dy; deltaY = dy; }
+        let newW = cropOrigW + deltaW;
+        let newH = cropOrigH + deltaH;
+        let newX = cropOrigX + deltaX;
+        let newY = cropOrigY + deltaY;
+        if (newW >= 10 && newX >= 0 && newX + newW <= originalWidth) {
+            cropOrigW = Math.round(newW);
+            cropOrigX = Math.round(newX);
         }
-        processNext();
+        if (newH >= 10 && newY >= 0 && newY + newH <= originalHeight) {
+            cropOrigH = Math.round(newH);
+            cropOrigY = Math.round(newY);
+        }
     }
+    syncUIFromOrig();
+    startX = clientX;
+    startY = clientY;
+}
 
-    // Cargar imagen actual en el visor
-    function loadCurrentImage() {
-        if (!imageFiles.length) return;
+// --- Eventos ratón ---
+function startDragMouse(e) {
+    if (e.target.classList.contains('resize-handle')) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    isDragging = true;
+    startX = pos.clientX;
+    startY = pos.clientY;
+}
+
+function startResizeMouse(e) {
+    if (!e.target.classList.contains('resize-handle')) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    isResizing = true;
+    resizeDir = e.target.classList[1];
+    startX = pos.clientX;
+    startY = pos.clientY;
+}
+
+function onMouseMove(e) {
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    processDrag(pos.clientX, pos.clientY);
+}
+
+function stopDragMouse(e) {
+    isDragging = false;
+    isResizing = false;
+}
+
+// --- Eventos táctiles ---
+function startDragTouch(e) {
+    if (e.target.classList.contains('resize-handle')) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    isDragging = true;
+    startX = pos.clientX;
+    startY = pos.clientY;
+}
+
+function startResizeTouch(e) {
+    if (!e.target.classList.contains('resize-handle')) return;
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    isResizing = true;
+    resizeDir = e.target.classList[1];
+    startX = pos.clientX;
+    startY = pos.clientY;
+}
+
+function onTouchMove(e) {
+    e.preventDefault();
+    const pos = getPointerPos(e);
+    processDrag(pos.clientX, pos.clientY);
+}
+
+function stopDragTouch(e) {
+    isDragging = false;
+    isResizing = false;
+}
+
+// --------------------------------------------------------------
+//  INICIALIZAR EVENTOS EN LA CAJA DE RECORTE
+// --------------------------------------------------------------
+function attachDragEvents() {
+    if (!cropBox) return;
+    // Quitar eventos previos para evitar duplicados
+    cropBox.removeEventListener('mousedown', startDragMouse);
+    cropBox.removeEventListener('touchstart', startDragTouch);
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('touchmove', onTouchMove);
+    document.removeEventListener('mouseup', stopDragMouse);
+    document.removeEventListener('touchend', stopDragTouch);
+
+    // Tiradores
+    const handles = cropBox.querySelectorAll('.resize-handle');
+    handles.forEach(h => {
+        h.removeEventListener('mousedown', startResizeMouse);
+        h.removeEventListener('touchstart', startResizeTouch);
+        h.addEventListener('mousedown', startResizeMouse);
+        h.addEventListener('touchstart', startResizeTouch, { passive: false });
+    });
+
+    // Arrastre sobre el recuadro
+    cropBox.addEventListener('mousedown', startDragMouse);
+    cropBox.addEventListener('touchstart', startDragTouch, { passive: false });
+
+    // Movimiento global (document)
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('touchmove', onTouchMove, { passive: false });
+    document.addEventListener('mouseup', stopDragMouse);
+    document.addEventListener('touchend', stopDragTouch);
+}
+
+// --------------------------------------------------------------
+//  PLANTILLAS
+// --------------------------------------------------------------
+function saveTemplate() {
+    if (originalWidth && originalHeight) {
+        cropTemplate = {
+            x: cropOrigX / originalWidth,
+            y: cropOrigY / originalHeight,
+            w: cropOrigW / originalWidth,
+            h: cropOrigH / originalHeight
+        };
+        showNotification('Plantilla guardada (proporcional)');
+        applyTemplateBtn.disabled = false;
+        applyToAllBtn.disabled = false;
+    } else {
+        showNotification('Error: imagen no cargada', true);
+    }
+}
+
+function applyTemplate() {
+    if (!cropTemplate || !originalWidth) return;
+    cropOrigX = cropTemplate.x * originalWidth;
+    cropOrigY = cropTemplate.y * originalHeight;
+    cropOrigW = cropTemplate.w * originalWidth;
+    cropOrigH = cropTemplate.h * originalHeight;
+    cropOrigX = Math.round(cropOrigX);
+    cropOrigY = Math.round(cropOrigY);
+    cropOrigW = Math.max(10, Math.round(cropOrigW));
+    cropOrigH = Math.max(10, Math.round(cropOrigH));
+    if (cropOrigX + cropOrigW > originalWidth) cropOrigW = originalWidth - cropOrigX;
+    if (cropOrigY + cropOrigH > originalHeight) cropOrigH = originalHeight - cropOrigY;
+    syncUIFromOrig();
+    showNotification('Plantilla aplicada a esta imagen');
+}
+
+function applyToAll() {
+    templateAppliedToAll = true;
+    applyTemplate();
+    showNotification('La plantilla se aplicará automáticamente al procesar todas');
+}
+
+// --------------------------------------------------------------
+//  RECORTAR Y GUARDAR
+// --------------------------------------------------------------
+function cropAndSaveOne() {
+    const raw = cropImagePrecise();
+    if (!raw) { showNotification('Error al recortar', true); return; }
+    addBoard(raw, null);
+    if (currentImageIndex < imageFiles.length - 1) {
+        nextImage();
+    } else {
+        showNotification('Guardado. Asigna turnos en la galería.');
+    }
+}
+
+// --------------------------------------------------------------
+//  PROCESAR TODAS LAS IMÁGENES
+// --------------------------------------------------------------
+function processAll() {
+    if (!imageFiles.length) { showNotification('No hay imágenes', true); return; }
+    if (cropTemplate) templateAppliedToAll = true;
+    let idx = 0;
+    function processNext() {
+        if (idx >= imageFiles.length) {
+            showNotification(`Procesado ${boards.length} tableros.`);
+            renderGallery();
+            return;
+        }
+        currentImageIndex = idx;
         const reader = new FileReader();
         reader.onload = e => {
-            originalImage = new Image();
-            originalImage.onload = () => {
+            const tempImg = new Image();
+            tempImg.onload = () => {
+                originalImage = tempImg;
                 originalWidth = originalImage.width;
                 originalHeight = originalImage.height;
                 imageToCrop.src = e.target.result;
-                // Inicializar recorte si no existe (por defecto 60% centro)
-                if (cropOrigW === 200 && cropOrigH === 200 && originalWidth) {
-                    cropOrigW = Math.floor(originalWidth * 0.6);
-                    cropOrigH = Math.floor(originalHeight * 0.6);
-                    cropOrigX = Math.floor((originalWidth - cropOrigW) / 2);
-                    cropOrigY = Math.floor((originalHeight - cropOrigH) / 2);
-                }
-                syncUIFromOrig();
-                cropOneBtn.disabled = false;
-                if (cropBox) cropBox.classList.remove('hidden');
-                attachDragEvents();
-                // reset zoom
-                if (currentZoom100) zoom100();
+                setTimeout(() => {
+                    if (cropTemplate && templateAppliedToAll) {
+                        cropOrigX = cropTemplate.x * originalWidth;
+                        cropOrigY = cropTemplate.y * originalHeight;
+                        cropOrigW = cropTemplate.w * originalWidth;
+                        cropOrigH = cropTemplate.h * originalHeight;
+                        cropOrigX = Math.round(cropOrigX);
+                        cropOrigY = Math.round(cropOrigY);
+                        cropOrigW = Math.max(10, Math.round(cropOrigW));
+                        cropOrigH = Math.max(10, Math.round(cropOrigH));
+                        syncUIFromOrig();
+                    }
+                    const raw = cropImagePrecise();
+                    if (raw) boards.push({ rawDataUrl: raw, turno: null });
+                    idx++;
+                    processNext();
+                }, 200);
             };
-            originalImage.src = e.target.result;
+            tempImg.src = e.target.result;
         };
-        reader.readAsDataURL(imageFiles[currentImageIndex]);
-        imageCounter.textContent = `Imagen ${currentImageIndex+1} de ${imageFiles.length}`;
-        prevBtn.disabled = currentImageIndex === 0;
-        nextBtn.disabled = currentImageIndex === imageFiles.length-1;
+        reader.readAsDataURL(imageFiles[idx]);
     }
+    processNext();
+}
 
-    function prevImage() { if (currentImageIndex > 0) { currentImageIndex--; loadCurrentImage(); } }
-    function nextImage() { if (currentImageIndex < imageFiles.length-1) { currentImageIndex++; loadCurrentImage(); } }
+// --------------------------------------------------------------
+//  NAVEGACIÓN DE IMÁGENES
+// --------------------------------------------------------------
+function loadCurrentImage() {
+    if (!imageFiles.length) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        originalImage = new Image();
+        originalImage.onload = () => {
+            originalWidth = originalImage.width;
+            originalHeight = originalImage.height;
+            imageToCrop.src = e.target.result;
+            // Recorte inicial: 60% del centro
+            if (cropOrigW === 200 && cropOrigH === 200 && originalWidth) {
+                cropOrigW = Math.floor(originalWidth * 0.6);
+                cropOrigH = Math.floor(originalHeight * 0.6);
+                cropOrigX = Math.floor((originalWidth - cropOrigW) / 2);
+                cropOrigY = Math.floor((originalHeight - cropOrigH) / 2);
+            }
+            syncUIFromOrig();
+            cropOneBtn.disabled = false;
+            if (cropBox) cropBox.classList.remove('hidden');
+            attachDragEvents();
+            // Reset zoom
+            if (currentZoom100) zoom100();
+        };
+        originalImage.src = e.target.result;
+    };
+    reader.readAsDataURL(imageFiles[currentImageIndex]);
+    imageCounter.textContent = `Imagen ${currentImageIndex+1} de ${imageFiles.length}`;
+    prevBtn.disabled = currentImageIndex === 0;
+    nextBtn.disabled = currentImageIndex === imageFiles.length-1;
+}
 
-    function zoom100() {
-        if (!originalWidth) return;
-        const container = document.getElementById('cropContainer');
-        if (!currentZoom100) {
-            // guardar estilo actual
-            imageToCrop.style.maxWidth = 'none';
-            imageToCrop.style.width = originalWidth + 'px';
-            imageToCrop.style.height = 'auto';
-            currentZoom100 = true;
-            showNotification('Vista al 100% (puede requerir scroll)');
-        } else {
-            imageToCrop.style.maxWidth = '100%';
-            imageToCrop.style.width = 'auto';
-            currentZoom100 = false;
-            showNotification('Vista redimensionada');
-        }
-        setTimeout(() => updateVisualCropBox(), 50);
+function prevImage() {
+    if (currentImageIndex > 0) {
+        currentImageIndex--;
+        loadCurrentImage();
     }
+}
+function nextImage() {
+    if (currentImageIndex < imageFiles.length-1) {
+        currentImageIndex++;
+        loadCurrentImage();
+    }
+}
 
-    // Eventos
-    imageInput.addEventListener('change', function() {
-        loadBtn.disabled = !this.files || this.files.length === 0;
-        if (this.files) imageFiles = Array.from(this.files);
-    });
-    loadBtn.addEventListener('click', () => {
-        if (imageFiles.length) {
-            cropSection.classList.remove('hidden');
-            currentImageIndex = 0;
-            loadCurrentImage();
-        }
-    });
-    cropOneBtn.addEventListener('click', cropAndSaveOne);
-    prevBtn.addEventListener('click', prevImage);
-    nextBtn.addEventListener('click', nextImage);
-    saveTemplateBtn.addEventListener('click', saveTemplate);
-    applyTemplateBtn.addEventListener('click', applyTemplate);
-    applyToAllBtn.addEventListener('click', applyToAll);
-    processAllBtn.addEventListener('click', processAll);
-    clearAllBtn.addEventListener('click', clearAll);
-    downloadAllBtn.addEventListener('click', downloadAll);
-    downloadSelectedBtn.addEventListener('click', downloadSelected);
-    selectAllBtn.addEventListener('click', () => {
-        for (let i = 0; i < boards.length; i++) selectedIndices.add(i);
-        renderGallery();
-    });
-    deselectAllBtn.addEventListener('click', () => {
-        selectedIndices.clear();
-        renderGallery();
-    });
-    batchWhiteBtn.addEventListener('click', () => applyTurnToSelectedAndOppositeToRest('white'));
-    batchBlackBtn.addEventListener('click', () => applyTurnToSelectedAndOppositeToRest('black'));
-    applyNumericBtn.addEventListener('click', applyNumericCrop);
-    zoom100Btn.addEventListener('click', zoom100);
+// --------------------------------------------------------------
+//  ZOOM 100%
+// --------------------------------------------------------------
+function zoom100() {
+    if (!originalWidth) return;
+    if (!currentZoom100) {
+        imageToCrop.style.maxWidth = 'none';
+        imageToCrop.style.width = originalWidth + 'px';
+        imageToCrop.style.height = 'auto';
+        currentZoom100 = true;
+        showNotification('Vista al 100% (usa scroll)');
+    } else {
+        imageToCrop.style.maxWidth = '100%';
+        imageToCrop.style.width = 'auto';
+        currentZoom100 = false;
+        showNotification('Vista redimensionada');
+    }
+    setTimeout(() => updateVisualCropBox(), 50);
+}
 
-    // Inicializar caja visual
-    window.addEventListener('load', () => {
-        cropBox = document.querySelector('.crop-box');
-        if (cropBox) cropBox.classList.add('hidden');
-    });
+// --------------------------------------------------------------
+//  EVENTOS DE BOTONES
+// --------------------------------------------------------------
+imageInput.addEventListener('change', function() {
+    loadBtn.disabled = !this.files || this.files.length === 0;
+    if (this.files) imageFiles = Array.from(this.files);
+});
+
+loadBtn.addEventListener('click', () => {
+    if (imageFiles.length) {
+        cropSection.classList.remove('hidden');
+        currentImageIndex = 0;
+        loadCurrentImage();
+    }
+});
+
+cropOneBtn.addEventListener('click', cropAndSaveOne);
+prevBtn.addEventListener('click', prevImage);
+nextBtn.addEventListener('click', nextImage);
+saveTemplateBtn.addEventListener('click', saveTemplate);
+applyTemplateBtn.addEventListener('click', applyTemplate);
+applyToAllBtn.addEventListener('click', applyToAll);
+processAllBtn.addEventListener('click', processAll);
+clearAllBtn.addEventListener('click', clearAll);
+downloadAllBtn.addEventListener('click', downloadAll);
+downloadSelectedBtn.addEventListener('click', downloadSelected);
+selectAllBtn.addEventListener('click', () => {
+    for (let i = 0; i < boards.length; i++) selectedIndices.add(i);
+    renderGallery();
+});
+deselectAllBtn.addEventListener('click', () => {
+    selectedIndices.clear();
+    renderGallery();
+});
+batchWhiteBtn.addEventListener('click', () => applyTurnToSelectedAndOppositeToRest('white'));
+batchBlackBtn.addEventListener('click', () => applyTurnToSelectedAndOppositeToRest('black'));
+applyNumericBtn.addEventListener('click', applyNumericCrop);
+zoom100Btn.addEventListener('click', zoom100);
+
+// --------------------------------------------------------------
+//  INICIALIZAR
+// --------------------------------------------------------------
+window.addEventListener('load', () => {
+    cropBox = document.querySelector('.crop-box');
+    if (cropBox) cropBox.classList.add('hidden');
+});
 </script>
 </body>
 </html>
