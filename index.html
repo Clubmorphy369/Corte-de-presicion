@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>ChessExtract Pro - Corte de Precisión</title>
+    <title>ChessExtract Pro - Corte de Precisión (Móvil)</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -78,7 +78,6 @@
             cursor: move;
             box-shadow: 0 0 0 9999px rgba(0,0,0,0.4);
             touch-action: none;
-            pointer-events: auto;
         }
         .resize-handle {
             position: absolute;
@@ -298,7 +297,7 @@
 
 <script>
 // ============================================================
-//  ChessExtract Pro - Límites con tolerancia y precisión
+//  ChessExtract Pro - OFFSET FIJO (arrastre preciso en móvil)
 // ============================================================
 
 // DOM elements
@@ -340,12 +339,16 @@ let originalWidth = 0, originalHeight = 0;
 let cropBox = null;
 let cropOrigX = 0, cropOrigY = 0, cropOrigW = 200, cropOrigH = 200;
 let isDragging = false, isResizing = false, resizeDir = null;
-let startX = 0, startY = 0;
+let startClientX = 0, startClientY = 0;
 let cropTemplate = null;
 let templateAppliedToAll = false;
 let boards = [];
 let selectedIndices = new Set();
 let currentZoom100 = false;
+
+// OFFSET FIJO de la imagen dentro del contenedor (se calcula al cargar)
+let imageOffsetX = 0;
+let imageOffsetY = 0;
 
 // --------------------------------------------------------------
 //  NOTIFICACIONES
@@ -359,64 +362,75 @@ function showNotification(msg, isError = false) {
 }
 
 // --------------------------------------------------------------
-//  SINCRONIZAR UI Y VALIDAR LÍMITES (con tolerancia)
+//  CALCULAR OFFSET DE LA IMAGEN DENTRO DEL CONTENEDOR
+// --------------------------------------------------------------
+function calculateImageOffset() {
+    const imgRect = imageToCrop.getBoundingClientRect();
+    const containerRect = document.getElementById('cropContainer').getBoundingClientRect();
+    imageOffsetX = imgRect.left - containerRect.left;
+    imageOffsetY = imgRect.top - containerRect.top;
+    // Si la imagen está centrada, estos offsets pueden ser >0
+}
+
+// --------------------------------------------------------------
+//  SINCRONIZAR UI Y VALIDAR LÍMITES
 // --------------------------------------------------------------
 function clampCropValues() {
     if (!originalWidth || !originalHeight) return;
-    // Usamos un margen de 0.5 para evitar errores de redondeo
-    const eps = 0.5;
-    if (cropOrigX + cropOrigW > originalWidth + eps) {
-        cropOrigW = originalWidth - cropOrigX;
-    }
-    if (cropOrigY + cropOrigH > originalHeight + eps) {
-        cropOrigH = originalHeight - cropOrigY;
-    }
-    if (cropOrigX < -eps) cropOrigX = 0;
-    if (cropOrigY < -eps) cropOrigY = 0;
-    if (cropOrigW < 10) cropOrigW = 10;
-    if (cropOrigH < 10) cropOrigH = 10;
-    // Redondear al final para evitar desfases
-    cropOrigX = Math.round(cropOrigX);
-    cropOrigY = Math.round(cropOrigY);
-    cropOrigW = Math.round(cropOrigW);
-    cropOrigH = Math.round(cropOrigH);
-    // Re-validar después del redondeo
     if (cropOrigX + cropOrigW > originalWidth) cropOrigW = originalWidth - cropOrigX;
     if (cropOrigY + cropOrigH > originalHeight) cropOrigH = originalHeight - cropOrigY;
     if (cropOrigX < 0) cropOrigX = 0;
     if (cropOrigY < 0) cropOrigY = 0;
+    if (cropOrigW < 10) cropOrigW = 10;
+    if (cropOrigH < 10) cropOrigH = 10;
 }
 
 function syncUIFromOrig() {
     clampCropValues();
-    cropXInput.value = cropOrigX;
-    cropYInput.value = cropOrigY;
-    cropWInput.value = cropOrigW;
-    cropHInput.value = cropOrigH;
+    cropXInput.value = Math.round(cropOrigX);
+    cropYInput.value = Math.round(cropOrigY);
+    cropWInput.value = Math.round(cropOrigW);
+    cropHInput.value = Math.round(cropOrigH);
     if (originalWidth && originalHeight) {
-        originalSizeInfo.innerText = `Original: ${originalWidth}×${originalHeight} px | Recorte: ${cropOrigW}×${cropOrigH}`;
+        originalSizeInfo.innerText = `Original: ${originalWidth}×${originalHeight} px | Recorte: ${Math.round(cropOrigW)}×${Math.round(cropOrigH)}`;
     }
     updateVisualCropBox();
 }
 
 // --------------------------------------------------------------
-//  ACTUALIZAR CAJA VISUAL (usando dimensiones mostradas)
+//  ACTUALIZAR CAJA VISUAL (usando offset fijo)
 // --------------------------------------------------------------
 function updateVisualCropBox() {
     if (!cropBox || !originalWidth || !originalHeight) return;
-    // Usamos el tamaño mostrado de la imagen (no getBoundingClientRect, que puede variar)
-    const displayWidth = imageToCrop.clientWidth || imageToCrop.width;
-    const displayHeight = imageToCrop.clientHeight || imageToCrop.height;
-    const scaleX = displayWidth / originalWidth;
-    const scaleY = displayHeight / originalHeight;
-    const left = cropOrigX * scaleX;
-    const top = cropOrigY * scaleY;
+    const imgRect = imageToCrop.getBoundingClientRect();
+    // Escalas (ancho mostrado / ancho original)
+    const scaleX = imgRect.width / originalWidth;
+    const scaleY = imgRect.height / originalHeight;
+    // Posición visual = offset fijo + (coordenada original * escala)
+    const left = imageOffsetX + cropOrigX * scaleX;
+    const top = imageOffsetY + cropOrigY * scaleY;
     const w = cropOrigW * scaleX;
     const h = cropOrigH * scaleY;
     cropBox.style.left = left + 'px';
     cropBox.style.top = top + 'px';
     cropBox.style.width = w + 'px';
     cropBox.style.height = h + 'px';
+}
+
+// --------------------------------------------------------------
+//  OBTENER POSICIÓN DEL PUNTERO EN COORDENADAS ORIGINALES
+// --------------------------------------------------------------
+function getPointerInImage(clientX, clientY) {
+    const imgRect = imageToCrop.getBoundingClientRect();
+    const scaleX = imgRect.width / originalWidth;
+    const scaleY = imgRect.height / originalHeight;
+    // Posición relativa a la imagen (restando el offset fijo)
+    const relX = clientX - imageOffsetX - imgRect.left + imageOffsetX; // simplificado: clientX - offsetX
+    const relY = clientY - imageOffsetY - imgRect.top + imageOffsetY; // simplificado
+    // Pero mejor calculamos directamente:
+    const x = (clientX - imageOffsetX) / scaleX;
+    const y = (clientY - imageOffsetY) / scaleY;
+    return { origX: x, origY: y };
 }
 
 // --------------------------------------------------------------
@@ -627,7 +641,7 @@ function clearAll() {
 }
 
 // --------------------------------------------------------------
-//  ARRASTRE Y REDIMENSIÓN (con límites con tolerancia)
+//  ARRASTRE POR POSICIÓN ABSOLUTA CON OFFSET FIJO
 // --------------------------------------------------------------
 function getPointerPos(e) {
     if (e.touches) {
@@ -636,51 +650,52 @@ function getPointerPos(e) {
     return { clientX: e.clientX, clientY: e.clientY };
 }
 
+let dragOffset = null;
+
 function processDrag(clientX, clientY) {
     if (!isDragging && !isResizing) return;
-    const displayWidth = imageToCrop.clientWidth || imageToCrop.width;
-    const displayHeight = imageToCrop.clientHeight || imageToCrop.height;
-    const scaleX = displayWidth / originalWidth;
-    const scaleY = displayHeight / originalHeight;
-    const dx = (clientX - startX) / scaleX;
-    const dy = (clientY - startY) / scaleY;
+    const pos = getPointerInImage(clientX, clientY);
 
     if (isDragging) {
-        let newX = cropOrigX + dx;
-        let newY = cropOrigY + dy;
-        const maxX = originalWidth - cropOrigW;
-        const maxY = originalHeight - cropOrigH;
-        // Permitir una pequeña tolerancia
-        if (newX < 0) newX = 0;
-        if (newX > maxX) newX = maxX;
-        if (newY < 0) newY = 0;
-        if (newY > maxY) newY = maxY;
-        cropOrigX = newX;
-        cropOrigY = newY;
+        if (dragOffset) {
+            let newX = pos.origX - dragOffset.offsetX;
+            let newY = pos.origY - dragOffset.offsetY;
+            const maxX = originalWidth - cropOrigW;
+            const maxY = originalHeight - cropOrigH;
+            newX = Math.max(0, Math.min(newX, maxX));
+            newY = Math.max(0, Math.min(newY, maxY));
+            cropOrigX = Math.round(newX);
+            cropOrigY = Math.round(newY);
+        }
     } else if (isResizing) {
-        let deltaW = 0, deltaH = 0, deltaX = 0, deltaY = 0;
-        if (resizeDir.includes('e')) deltaW = dx;
-        if (resizeDir.includes('w')) { deltaW = -dx; deltaX = dx; }
-        if (resizeDir.includes('s')) deltaH = dy;
-        if (resizeDir.includes('n')) { deltaH = -dy; deltaY = dy; }
-        let newW = cropOrigW + deltaW;
-        let newH = cropOrigH + deltaH;
-        let newX = cropOrigX + deltaX;
-        let newY = cropOrigY + deltaY;
+        // Usamos delta desde el inicio
+        const imgRect = imageToCrop.getBoundingClientRect();
+        const scaleX = imgRect.width / originalWidth;
+        const scaleY = imgRect.height / originalHeight;
+        const dx = (clientX - startClientX) / scaleX;
+        const dy = (clientY - startClientY) / scaleY;
+        let newW = cropOrigW;
+        let newH = cropOrigH;
+        let newX = cropOrigX;
+        let newY = cropOrigY;
+        if (resizeDir.includes('e')) newW += dx;
+        if (resizeDir.includes('w')) { newW -= dx; newX += dx; }
+        if (resizeDir.includes('s')) newH += dy;
+        if (resizeDir.includes('n')) { newH -= dy; newY += dy; }
         newW = Math.max(10, newW);
         newH = Math.max(10, newH);
         if (newX < 0) newX = 0;
         if (newY < 0) newY = 0;
         if (newX + newW > originalWidth) newW = originalWidth - newX;
         if (newY + newH > originalHeight) newH = originalHeight - newY;
-        cropOrigX = newX;
-        cropOrigY = newY;
-        cropOrigW = newW;
-        cropOrigH = newH;
+        cropOrigX = Math.round(newX);
+        cropOrigY = Math.round(newY);
+        cropOrigW = Math.round(newW);
+        cropOrigH = Math.round(newH);
     }
     syncUIFromOrig();
-    startX = clientX;
-    startY = clientY;
+    startClientX = clientX;
+    startClientY = clientY;
 }
 
 // --- Eventos ratón ---
@@ -688,22 +703,29 @@ function startDragMouse(e) {
     if (e.target.classList.contains('resize-handle')) return;
     e.preventDefault();
     const pos = getPointerPos(e);
+    startClientX = pos.clientX;
+    startClientY = pos.clientY;
+    const imgPos = getPointerInImage(pos.clientX, pos.clientY);
+    dragOffset = {
+        offsetX: imgPos.origX - cropOrigX,
+        offsetY: imgPos.origY - cropOrigY
+    };
     isDragging = true;
-    startX = pos.clientX;
-    startY = pos.clientY;
 }
 
 function startResizeMouse(e) {
     if (!e.target.classList.contains('resize-handle')) return;
     e.preventDefault();
     const pos = getPointerPos(e);
+    startClientX = pos.clientX;
+    startClientY = pos.clientY;
     isResizing = true;
     resizeDir = e.target.classList[1];
-    startX = pos.clientX;
-    startY = pos.clientY;
+    dragOffset = null;
 }
 
 function onMouseMove(e) {
+    if (!isDragging && !isResizing) return;
     e.preventDefault();
     const pos = getPointerPos(e);
     processDrag(pos.clientX, pos.clientY);
@@ -712,6 +734,7 @@ function onMouseMove(e) {
 function stopDragMouse(e) {
     isDragging = false;
     isResizing = false;
+    dragOffset = null;
 }
 
 // --- Eventos táctiles ---
@@ -719,19 +742,25 @@ function startDragTouch(e) {
     if (e.target.classList.contains('resize-handle')) return;
     e.preventDefault();
     const pos = getPointerPos(e);
+    startClientX = pos.clientX;
+    startClientY = pos.clientY;
+    const imgPos = getPointerInImage(pos.clientX, pos.clientY);
+    dragOffset = {
+        offsetX: imgPos.origX - cropOrigX,
+        offsetY: imgPos.origY - cropOrigY
+    };
     isDragging = true;
-    startX = pos.clientX;
-    startY = pos.clientY;
 }
 
 function startResizeTouch(e) {
     if (!e.target.classList.contains('resize-handle')) return;
     e.preventDefault();
     const pos = getPointerPos(e);
+    startClientX = pos.clientX;
+    startClientY = pos.clientY;
     isResizing = true;
     resizeDir = e.target.classList[1];
-    startX = pos.clientX;
-    startY = pos.clientY;
+    dragOffset = null;
 }
 
 function onTouchMove(e) {
@@ -745,10 +774,11 @@ function onTouchMove(e) {
 function stopDragTouch(e) {
     isDragging = false;
     isResizing = false;
+    dragOffset = null;
 }
 
 // --------------------------------------------------------------
-//  INICIALIZAR EVENTOS
+//  INICIALIZAR EVENTOS Y OFFSET
 // --------------------------------------------------------------
 function attachDragEvents() {
     if (!cropBox) return;
@@ -801,6 +831,10 @@ function applyTemplate() {
     cropOrigY = cropTemplate.y * originalHeight;
     cropOrigW = cropTemplate.w * originalWidth;
     cropOrigH = cropTemplate.h * originalHeight;
+    cropOrigX = Math.round(cropOrigX);
+    cropOrigY = Math.round(cropOrigY);
+    cropOrigW = Math.max(10, Math.round(cropOrigW));
+    cropOrigH = Math.max(10, Math.round(cropOrigH));
     syncUIFromOrig();
     showNotification('Plantilla aplicada a esta imagen');
 }
@@ -847,12 +881,18 @@ function processAll() {
                 originalWidth = originalImage.width;
                 originalHeight = originalImage.height;
                 imageToCrop.src = e.target.result;
+                // Calcular offset al cargar la imagen
                 setTimeout(() => {
+                    calculateImageOffset();
                     if (cropTemplate && templateAppliedToAll) {
                         cropOrigX = cropTemplate.x * originalWidth;
                         cropOrigY = cropTemplate.y * originalHeight;
                         cropOrigW = cropTemplate.w * originalWidth;
                         cropOrigH = cropTemplate.h * originalHeight;
+                        cropOrigX = Math.round(cropOrigX);
+                        cropOrigY = Math.round(cropOrigY);
+                        cropOrigW = Math.max(10, Math.round(cropOrigW));
+                        cropOrigH = Math.max(10, Math.round(cropOrigH));
                         syncUIFromOrig();
                     }
                     const raw = cropImagePrecise();
@@ -880,17 +920,21 @@ function loadCurrentImage() {
             originalWidth = originalImage.width;
             originalHeight = originalImage.height;
             imageToCrop.src = e.target.result;
-            if (cropOrigW === 200 && cropOrigH === 200 && originalWidth) {
-                cropOrigW = Math.floor(originalWidth * 0.6);
-                cropOrigH = Math.floor(originalHeight * 0.6);
-                cropOrigX = Math.floor((originalWidth - cropOrigW) / 2);
-                cropOrigY = Math.floor((originalHeight - cropOrigH) / 2);
-            }
-            syncUIFromOrig();
-            cropOneBtn.disabled = false;
-            if (cropBox) cropBox.classList.remove('hidden');
-            attachDragEvents();
-            if (currentZoom100) zoom100();
+            // Calcular offset al cargar
+            setTimeout(() => {
+                calculateImageOffset();
+                if (cropOrigW === 200 && cropOrigH === 200 && originalWidth) {
+                    cropOrigW = Math.floor(originalWidth * 0.6);
+                    cropOrigH = Math.floor(originalHeight * 0.6);
+                    cropOrigX = Math.floor((originalWidth - cropOrigW) / 2);
+                    cropOrigY = Math.floor((originalHeight - cropOrigH) / 2);
+                }
+                syncUIFromOrig();
+                cropOneBtn.disabled = false;
+                if (cropBox) cropBox.classList.remove('hidden');
+                attachDragEvents();
+                if (currentZoom100) zoom100();
+            }, 50);
         };
         originalImage.src = e.target.result;
     };
